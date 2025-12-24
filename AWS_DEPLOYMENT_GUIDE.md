@@ -259,97 +259,95 @@ Follow these steps to prove the system works:
 
 ---
 
-## Step 6: Deploying the Modern Frontend (Phase 2 Upgrade)
+## Step 6: Deploying the Modern Frontend (The Full Guide)
 
-Since we upgraded from Vanilla JS to React + Vite, we need to build the project.
+Since we modernized the app, the deployment process has changed slightly. We recommend a **Hybrid Approach**:
+1.  **Source Code (Backend/DB)**: Use **Git** (Push locally -> Pull on EC2).
+2.  **Frontend Build**: Use **SCP** (Build locally -> Upload to EC2). *Why? Building on a small EC2 instance often crashes it.*
 
-### 1. Database Upgrade
-The new dashboard requires additional tables.
+### 1. Local Preparation (On Your Mac)
+First, save all your changes to GitHub.
 ```bash
-# On your local machine (where schema_v2.sql is)
-cd ~/Booking_Reservation_System/database
-scp -i ~/path/to/key.pem schema_v2.sql ubuntu@<EC2-IP>:~/Booking_Reservation_System/database/
-```
-```bash
-# On EC2 Instance
-cd ~/Booking_Reservation_System/database
-mysql -h <RDS-ENDPOINT> -u admin -p booking_system < schema_v2.sql
+# 1. Commit and Push your changes
+git add .
+git commit -m "feat: modernize frontend and backend"
+git push origin main
 ```
 
-### 2. Backend Update
-Pull the latest code or transfer `backend/` files.
+### 2. Database Upgrade
+We need to apply the new schema changes.
 ```bash
-cd ~/Booking_Reservation_System/backend
-npm install # To ensure any new deps are installed
+# 1. Upload the schema file to EC2
+scp -i path/to/key.pem database/schema_v2.sql ubuntu@<EC2-IP>:~/Booking_Reservation_System/database/
+
+# 2. Connect to EC2
+ssh -i path/to/key.pem ubuntu@<EC2-IP>
+
+# 3. Run the schema script (Run this ON EC2)
+# Replace <RDS-ENDPOINT> with your actual DB endpoint
+mysql -h <RDS-ENDPOINT> -u admin -p booking_system < ~/Booking_Reservation_System/database/schema_v2.sql
+```
+
+### 3. Backend Update (On EC2)
+Get the new backend code onto the server.
+```bash
+# (Still on EC2)
+cd ~/Booking_Reservation_System
+git pull origin main
+
+# Update Backend Dependencies
+cd backend
+npm install
 pm2 restart booking-api
 ```
 
-### 3. Frontend Build & Deploy
-We **build** the React app into static files (`dist/` folder) and serve them with Nginx.
+### 4. Frontend Build & Deploy (Back on Your Mac)
+We will build the optimal production version of React on your powerful computer, then send it to the server.
 
-**Option A: Build Locally (Recommended)**
 ```bash
-# Local Machine
-cd frontend-modern
-npm install
-npm run build 
-# This creates a 'dist' folder
-```
-Transfer the `dist` folder to EC2:
-```bash
-scp -i ~/path/to/key.pem -r dist ubuntu@<EC2-IP>:~/Booking_Reservation_System/frontend-modern-dist
-```
-
-**Option B: Build on Server (If node/npm version allows)**
-```bash
-# EC2
-cd ~/Booking_Reservation_System/frontend-modern
+# 1. Build the project locally
+cd frontend
 npm install
 npm run build
+# This creates a 'dist' folder with optimized HTML/CSS/JS
+
+# 2. Upload the 'dist' folder to EC2
+# We name it 'frontend-dist' on the server
+scp -i path/to/key.pem -r dist ubuntu@<EC2-IP>:~/Booking_Reservation_System/frontend-dist
 ```
 
-### 4. Update Nginx Config
-We need to point Nginx to the new React `dist` folder instead of the old vanilla `frontend` folder.
+### 5. Update Nginx Config (On EC2)
+Point Nginx to the new React files.
 
 ```bash
+# 1. Connect to EC2
+ssh -i path/to/key.pem ubuntu@<EC2-IP>
+
+# 2. Edit Nginx Config
 sudo nano /etc/nginx/sites-available/default
 ```
 
-Change the `root` directive:
+**Find** the line `root ...;` and **change** it to:
 ```nginx
-server {
-    listen 80;
-    
-    # OLD: root /home/ubuntu/Booking_Reservation_System/frontend;
-    # NEW:
-    root /home/ubuntu/Booking_Reservation_System/frontend-modern-dist;
-    
-    index index.html;
+root /home/ubuntu/Booking_Reservation_System/frontend-dist;
+```
 
-    # Backend API Proxy (Unchanged)
-    location /api {
-        proxy_pass http://localhost:5000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
-
-    # React Router Fix
-    # This ensures that refreshing on /dashboard or /login doesn't give 404
+**Find** the `location /` block and ensure it looks like this (to fix React Router 404s):
+```nginx
     location / {
         try_files $uri $uri/ /index.html;
     }
-}
 ```
 
-Restart Nginx:
+**Save and Exit**: `Ctrl+O`, `Enter`, `Ctrl+X`.
+
+**Restart Nginx**:
 ```bash
 sudo systemctl restart nginx
 ```
 
-### 5. Final Verification
-1. Open your Load Balancer DNS.
-2. You should see the nice Gradient Auth Page.
-3. Login and verify the Dashboard shows real stats (even if 0).
+### 6. Verify Deployment
+1. Go to your Load Balancer URL.
+2. You should see the new **Modern Interface**.
+3. Log in and verify that charts and resource lists are loading.
+

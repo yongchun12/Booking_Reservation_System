@@ -1,7 +1,3 @@
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@radix-ui/react-tabs'; // Wait, I need to implement Tabs first or install radix
-// I'll implement a simple Tabs component using Headless UI or just custom state for now to avoid installing radix primitive manually if not included.
-// Actually @headlessui/react has Tab.
-import { Tab } from '@headlessui/react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { cn } from '../../lib/utils'; // Make sure this is imported

@@ -1,18 +1,35 @@
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { Calendar, CheckCircle, Clock } from 'lucide-react';
+import { Calendar, CheckCircle, Clock, Loader2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-
-const data = [
-    { name: 'Mon', bookings: 4 },
-    { name: 'Tue', bookings: 3 },
-    { name: 'Wed', bookings: 2 },
-    { name: 'Thu', bookings: 6 },
-    { name: 'Fri', bookings: 8 },
-    { name: 'Sat', bookings: 5 },
-    { name: 'Sun', bookings: 1 },
-];
+import api from '../../lib/api';
+import { format } from 'date-fns';
 
 export default function Dashboard() {
+    const [stats, setStats] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                const res = await api.get('/analytics/user/stats');
+                setStats(res.data);
+            } catch (error) {
+                console.error("Failed to fetch dashboard stats", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchStats();
+    }, []);
+
+    if (loading) {
+        return <div className="flex h-96 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+    }
+
+    // Default empty state if no data
+    const safeStats = stats || { totalBookings: 0, upcoming: 0, completed: 0, recentActivity: [], monthlyData: [] };
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -27,8 +44,7 @@ export default function Dashboard() {
                         <Calendar className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">12</div>
-                        <p className="text-xs text-muted-foreground">+2 from last month</p>
+                        <div className="text-2xl font-bold">{safeStats.totalBookings}</div>
                     </CardContent>
                 </Card>
 
@@ -38,8 +54,7 @@ export default function Dashboard() {
                         <Clock className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">3</div>
-                        <p className="text-xs text-muted-foreground">Next: Tomorrow at 2PM</p>
+                        <div className="text-2xl font-bold">{safeStats.upcoming}</div>
                     </CardContent>
                 </Card>
 
@@ -49,8 +64,7 @@ export default function Dashboard() {
                         <CheckCircle className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">45</div>
-                        <p className="text-xs text-muted-foreground">All time</p>
+                        <div className="text-2xl font-bold">{safeStats.completed}</div>
                     </CardContent>
                 </Card>
             </div>
@@ -64,7 +78,7 @@ export default function Dashboard() {
                     <CardContent className="pl-2">
                         <div className="h-[300px]">
                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={data}>
+                                <BarChart data={safeStats.monthlyData || []}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--muted-foreground)/0.2)" />
                                     <XAxis
                                         dataKey="name"
@@ -94,26 +108,27 @@ export default function Dashboard() {
                 <Card className="col-span-3">
                     <CardHeader>
                         <CardTitle>Recent Activity</CardTitle>
-                        <p className="text-sm text-muted-foreground">You made 3 bookings this month.</p>
+                        <p className="text-sm text-muted-foreground">Your recent bookings.</p>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-8">
-                            {/* Mock Item */}
-                            <div className="flex items-center">
-                                <div className="space-y-1">
-                                    <p className="text-sm font-medium leading-none">Meeting Room A</p>
-                                    <p className="text-sm text-muted-foreground">Dec 24, 2:00 PM - 3:00 PM</p>
-                                </div>
-                                <div className="ml-auto font-medium">+1 hr</div>
-                            </div>
-                            {/* Mock Item */}
-                            <div className="flex items-center">
-                                <div className="space-y-1">
-                                    <p className="text-sm font-medium leading-none">Projector</p>
-                                    <p className="text-sm text-muted-foreground">Dec 22, 10:00 AM - 12:00 PM</p>
-                                </div>
-                                <div className="ml-auto font-medium">+2 hrs</div>
-                            </div>
+                            {safeStats.recentActivity && safeStats.recentActivity.length > 0 ? (
+                                safeStats.recentActivity.map((booking, i) => (
+                                    <div key={i} className="flex items-center">
+                                        <div className="space-y-1">
+                                            <p className="text-sm font-medium leading-none">{booking.resource_name}</p>
+                                            <p className="text-sm text-muted-foreground">
+                                                {format(new Date(booking.start_time), 'MMM d, h:mm a')}
+                                            </p>
+                                        </div>
+                                        <div className="ml-auto font-medium capitalize text-xs bg-muted px-2 py-1 rounded">
+                                            {booking.status}
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="text-sm text-muted-foreground">No recent activity.</p>
+                            )}
                         </div>
                     </CardContent>
                 </Card>
