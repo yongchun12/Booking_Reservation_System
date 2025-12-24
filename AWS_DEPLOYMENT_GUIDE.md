@@ -256,3 +256,100 @@ Follow these steps to prove the system works:
 - Select a small image or PDF.
 - If you see "File uploaded!", check your S3 bucket in the Console.
 - **Success**: If the file appears in S3, your **IAM Role** is working correctly.
+
+---
+
+## Step 6: Deploying the Modern Frontend (Phase 2 Upgrade)
+
+Since we upgraded from Vanilla JS to React + Vite, we need to build the project.
+
+### 1. Database Upgrade
+The new dashboard requires additional tables.
+```bash
+# On your local machine (where schema_v2.sql is)
+cd ~/Booking_Reservation_System/database
+scp -i ~/path/to/key.pem schema_v2.sql ubuntu@<EC2-IP>:~/Booking_Reservation_System/database/
+```
+```bash
+# On EC2 Instance
+cd ~/Booking_Reservation_System/database
+mysql -h <RDS-ENDPOINT> -u admin -p booking_system < schema_v2.sql
+```
+
+### 2. Backend Update
+Pull the latest code or transfer `backend/` files.
+```bash
+cd ~/Booking_Reservation_System/backend
+npm install # To ensure any new deps are installed
+pm2 restart booking-api
+```
+
+### 3. Frontend Build & Deploy
+We **build** the React app into static files (`dist/` folder) and serve them with Nginx.
+
+**Option A: Build Locally (Recommended)**
+```bash
+# Local Machine
+cd frontend-modern
+npm install
+npm run build 
+# This creates a 'dist' folder
+```
+Transfer the `dist` folder to EC2:
+```bash
+scp -i ~/path/to/key.pem -r dist ubuntu@<EC2-IP>:~/Booking_Reservation_System/frontend-modern-dist
+```
+
+**Option B: Build on Server (If node/npm version allows)**
+```bash
+# EC2
+cd ~/Booking_Reservation_System/frontend-modern
+npm install
+npm run build
+```
+
+### 4. Update Nginx Config
+We need to point Nginx to the new React `dist` folder instead of the old vanilla `frontend` folder.
+
+```bash
+sudo nano /etc/nginx/sites-available/default
+```
+
+Change the `root` directive:
+```nginx
+server {
+    listen 80;
+    
+    # OLD: root /home/ubuntu/Booking_Reservation_System/frontend;
+    # NEW:
+    root /home/ubuntu/Booking_Reservation_System/frontend-modern-dist;
+    
+    index index.html;
+
+    # Backend API Proxy (Unchanged)
+    location /api {
+        proxy_pass http://localhost:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    # React Router Fix
+    # This ensures that refreshing on /dashboard or /login doesn't give 404
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+```
+
+Restart Nginx:
+```bash
+sudo systemctl restart nginx
+```
+
+### 5. Final Verification
+1. Open your Load Balancer DNS.
+2. You should see the nice Gradient Auth Page.
+3. Login and verify the Dashboard shows real stats (even if 0).
