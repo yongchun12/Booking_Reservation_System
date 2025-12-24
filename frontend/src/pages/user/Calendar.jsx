@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -8,15 +8,39 @@ import Modal from '../../components/ui/modal';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
+import api from '../../lib/api';
+import { useAuth } from '../../context/AuthContext';
 
 export default function Calendar() {
-    const [events, setEvents] = useState([
-        { id: '1', title: 'Meeting Room A', start: new Date().toISOString().split('T')[0] + 'T10:00:00', end: new Date().toISOString().split('T')[0] + 'T12:00:00', backgroundColor: '#6366f1' },
-    ]);
+    const [events, setEvents] = useState([]);
     const [showModal, setShowModal] = useState(false);
     const [selectedDate, setSelectedDate] = useState(null);
     const [newEventTitle, setNewEventTitle] = useState('');
-    const [selectedEvent, setSelectedEvent] = useState(null); // For editing/deleting
+    const [selectedEvent, setSelectedEvent] = useState(null);
+    const { user } = useAuth();
+
+    // Fetch Bookings
+    useEffect(() => {
+        fetchEvents();
+    }, []);
+
+    const fetchEvents = async () => {
+        try {
+            const res = await api.get('/bookings');
+            // Transform API data to FullCalendar format
+            const calendarEvents = res.data.map(booking => ({
+                id: booking.id,
+                title: booking.resource_name || 'Booking', // Assuming backend joins request
+                start: `${booking.booking_date.split('T')[0]}T${booking.start_time}`,
+                end: `${booking.booking_date.split('T')[0]}T${booking.end_time}`,
+                backgroundColor: booking.status === 'confirmed' ? '#10b981' : '#6366f1',
+                extendedProps: { ...booking }
+            }));
+            setEvents(calendarEvents);
+        } catch (err) {
+            console.error("Failed to fetch bookings", err);
+        }
+    };
 
     const handleDateSelect = (selectInfo) => {
         setSelectedDate(selectInfo);
@@ -26,52 +50,52 @@ export default function Calendar() {
     };
 
     const handleEventClick = (clickInfo) => {
-        // Simple delete for now as per "edit" request might imply modifying title
-        // But for quick MVP, let's just allow delete or re-title via same modal? 
-        // For simplicity: Click opens modal to Delete or Rename.
         setSelectedEvent(clickInfo.event);
         setNewEventTitle(clickInfo.event.title);
         setShowModal(true);
     };
 
-    const handleSaveEvent = () => {
-        if (!newEventTitle) return;
+    const handleSaveEvent = async () => {
+        if (!newEventTitle || !selectedDate) return;
 
-        if (selectedEvent) {
-            // Update existing
-            selectedEvent.setProp('title', newEventTitle);
-        } else {
-            // Create new
-            const calendarApi = selectedDate.view.calendar;
-            calendarApi.unselect();
-            calendarApi.addEvent({
-                id: createEventId(),
-                title: newEventTitle,
-                start: selectedDate.startStr,
-                end: selectedDate.endStr,
-                allDay: selectedDate.allDay,
-                backgroundColor: '#6366f1'
-            });
-        }
-        setShowModal(false);
-    };
+        // Simplified booking creation: Just defaults to a specific resource for now (MVP)
+        // Ideally we need a Resource Select input in the modal
+        // Using Resource ID 1 (Meeting Room A) as default
+        const payload = {
+            resource_id: 1,
+            booking_date: selectedDate.startStr.split('T')[0],
+            start_time: selectedDate.startStr.split('T')[1].substring(0, 5), // HH:MM
+            end_time: selectedDate.endStr.split('T')[1].substring(0, 5)     // HH:MM
+        };
 
-    const handleDeleteEvent = () => {
-        if (selectedEvent) {
-            selectedEvent.remove();
+        try {
+            await api.post('/bookings', payload);
+            await fetchEvents(); // Refresh
             setShowModal(false);
+        } catch (err) {
+            alert(err.response?.data?.message || "Booking failed");
         }
     };
 
-    let eventGuid = 0;
-    function createEventId() {
-        return String(eventGuid++) + Date.now();
-    }
+    const handleDeleteEvent = async () => {
+        if (!selectedEvent) return;
+
+        if (!confirm("Are you sure you want to cancel this booking?")) return;
+
+        try {
+            await api.delete(`/bookings/${selectedEvent.id}`);
+            await fetchEvents();
+            setShowModal(false);
+        } catch (err) {
+            alert("Failed to delete booking");
+        }
+    };
 
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <h2 className="text-3xl font-bold tracking-tight">Booking Calendar</h2>
+                <Button onClick={fetchEvents}>Refresh</Button>
             </div>
 
             <Card>
@@ -88,11 +112,11 @@ export default function Calendar() {
                                 right: 'dayGridMonth,timeGridWeek,timeGridDay'
                             }}
                             initialView="timeGridWeek"
-                            editable={true}
+                            editable={false} // Disable drag-resize for now to keep simple
                             selectable={true}
                             selectMirror={true}
                             dayMaxEvents={true}
-                            events={events}
+                            events={events} // Use dynamic events
                             select={handleDateSelect}
                             eventClick={handleEventClick}
                             height="100%"
