@@ -21,9 +21,12 @@ const authRoutes = require('./routes/auth');
 const resourceRoutes = require('./routes/resources');
 const bookingRoutes = require('./routes/bookings');
 
+const analyticsRoutes = require('./routes/analytics');
+
 app.use('/api/auth', authRoutes);
 app.use('/api/resources', resourceRoutes);
 app.use('/api/bookings', bookingRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
