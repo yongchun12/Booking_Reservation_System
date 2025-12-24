@@ -33,11 +33,17 @@ Before creating instances, let's define the firewall rules.
 
 To allow the application to upload files to S3 without hardcoding keys on the server.
 
-1.  Go to **IAM Dashboard** -> **Roles** -> **Create role**.
-2.  Select **AWS service** -> **EC2**.
-3.  Add Permissions: Search for `AmazonS3FullAccess` (or create a stricter policy just for your bucket).
-4.  Role Name: `BookingAppRole`.
-5.  Create Role.
+> [!IMPORTANT]
+> **AWS Academy Learner Lab Users**: You likely cannot create new IAM roles with full access. Instead, you **must use the existing `LabRole`** which is pre-created for you and has the necessary permissions. Skip the creation steps below and just select `LabRole` when launching your EC2 instance.
+
+1.  **If you are NOT using Learner Lab**:
+    -   Go to **IAM Dashboard** -> **Roles** -> **Create role**.
+    -   Select **AWS service** -> **EC2**.
+    -   Add Permissions: Search for `AmazonS3FullAccess`.
+    -   Role Name: `BookingAppRole`.
+    -   Create Role.
+2.  **If you ARE using Learner Lab**:
+    -   Skip this step. You will use the existing `LabRole` in Step 5.
 
 ---
 
@@ -81,7 +87,7 @@ To allow the application to upload files to S3 without hardcoding keys on the se
 7.  **Connectivity**:
     -   VPC: Default
     -   Public access: **No** (Security best practice).
-    -   VPC Security Group: Select `booking-db-sg` created in Step 1.
+    -   VPC Security Group: Select `BRS-SG-DB` created in Step 1.
 8.  **Additional configuration**:
     -   Initial database name: `booking_system`
 9.  Create Database. (It will take a few minutes).
@@ -98,8 +104,8 @@ We will configure one instance first, then use it to create an Image (AMI) for A
     -   OS: **Ubuntu Server 22.04 LTS** (Free tier).
     -   Instance Type: `t2.micro` or `t3.micro`.
     -   Key Pair: Create new (e.g., `booking-key`) and download `.pem`.
-    -   Network: Select `booking-web-sg`.
-    -   **Advanced details** -> **IAM instance profile**: Select `BookingAppRole`.
+    -   Network: Select `BRS-SG-WEB`.
+    -   **Advanced details** -> **IAM instance profile**: Select `BookingAppRole` (or `LabRole` for Academy users).
 2.  **Connect via SSH**:
     ```bash
     chmod 400 booking-key.pem
@@ -142,21 +148,25 @@ We will configure one instance first, then use it to create an Image (AMI) for A
     ```
     Replace `location /` content:
     ```nginx
-    # Serve Frontend Files
-    location / {
+    server {
+        listen 80 default_server;
+        listen [::]:80 default_server;
         root /home/ubuntu/booking-system/frontend;
-        index index.html;
-        try_files $uri $uri/ =404;
-    }
+        index index.html index.htm index.nginx-debian.html;
+        server_name _;
 
-    # Proxy API Requests
-    location /api {
-        proxy_pass http://localhost:5000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
+        location / {
+            try_files $uri $uri/ =404;
+        }
+
+        location /api {
+            proxy_pass http://localhost:5000;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection 'upgrade';
+            proxy_set_header Host $host;
+            proxy_cache_bypass $http_upgrade;
+        }
     }
     ```
     Restart Nginx: `sudo systemctl restart nginx`
@@ -181,16 +191,16 @@ Now that we have a working instance, let's scale it.
     -   Go to **Load Balancers** -> **Create Load Balancer** -> **Application Load Balancer**.
     -   Name: `booking-alb`.
     -   Scheme: Internet-facing.
-    -   Network: Select all available Zones.
-    -   Security Group: `booking-alb-sg`.
+    -   Network: Select all available Zones that match your EC2 subnet.
+    -   Security Group: `BRS-SG-ALB`.
     -   **Listeners**: HTTP 80 -> Forward to `booking-tg`.
 4.  **Create Launch Template**:
     -   Go to **EC2** -> **Launch Templates**.
     -   Name: `booking-launch-template`.
     -   AMI: Select `booking-app-v1` (My AMIs).
     -   Instance type: `t2.micro`.
-    -   Security Group: `booking-web-sg`.
-    -   IAM Role: `BookingAppRole`.
+    -   Security Group: `BRS-SG-WEB`.
+    -   IAM Role: `BookingAppRole` (or `LabRole` for Academy users).
     -   User Data (Advanced):
         ```bash
         #!/bin/bash
@@ -210,9 +220,39 @@ Now that we have a working instance, let's scale it.
         -   Max: 4
     -   **Scaling Policies**: Target Tracking -> Average CPU Utilization -> 70 (or 50 for testing).
 
-## Final Verification
-1.  Wait for ASG to launch 2 instances.
-2.  Check ALB DNS Name (e.g., `booking-alb-xyz.region.elb.amazonaws.com`).
-3.  Open that URL in browser. Your app should load!
-4.  Upload a file to test IAM/S3.
-5.  Register a user to test RDS.
+---
+
+## Final Verification (How to Test)
+
+Follow these steps to prove the system works:
+
+### 1. Wait for Auto Scaling
+- Go to **EC2 Dashboard** -> **Auto Scaling Groups**.
+- Click `booking-asg` and check the **Instance Management** tab.
+- You should see 2 instances with status `Inservice`.
+
+### 2. Find your Website URL
+- Go to **EC2 Dashboard** -> **Load Balancers**.
+- Click `booking-alb`.
+- Look for the **DNS Name** in the details (e.g., `booking-alb-123456.us-east-1.elb.amazonaws.com`).
+- Copy this URL.
+
+### 3. Open in Browser
+- Paste the URL into your browser.
+- You should see the "Welcome to Booking System" landing page.
+
+### 4. Test User & Database (RDS)
+- Click **Register**.
+- Create a user (e.g., `test@example.com`).
+- If successful, you will be redirected to Login.
+- Login with the new account.
+- **Success**: If this works, your **RDS** connection is good.
+
+### 5. Test File Upload (S3 & IAM)
+- Once logged in, go to the "My Bookings" tab (You need to book a room first).
+- Go to "Resources", click "Book Now" on any item, and confirm.
+- Go to "My Bookings".
+- Click **Upload File**.
+- Select a small image or PDF.
+- If you see "File uploaded!", check your S3 bucket in the Console.
+- **Success**: If the file appears in S3, your **IAM Role** is working correctly.
