@@ -2,6 +2,8 @@ import { Menu, Bell, Search, User } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 
+import { ModeToggle } from '../ui/theme-toggle';
+
 export default function Navbar({ setSidebarOpen }) {
     return (
         <header className="flex h-16 items-center gap-4 border-b bg-card px-6">
@@ -24,6 +26,7 @@ export default function Navbar({ setSidebarOpen }) {
 
             {/* Right Actions */}
             <div className="flex items-center gap-2 ml-auto">
+                <ModeToggle />
                 <Button variant="ghost" size="icon">
                     <Bell className="h-5 w-5" />
                     <span className="sr-only">Notifications</span>
