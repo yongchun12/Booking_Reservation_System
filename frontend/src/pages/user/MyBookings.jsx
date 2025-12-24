@@ -26,16 +26,24 @@ export default function MyBookings() {
     }, []);
 
     // Filter logic
-    const filteredBookings = bookings.filter(b => {
-        const bookingDate = new Date(b.start_time);
-        const now = new Date();
-        const isPast = bookingDate < now;
-        const isCancelled = b.status === 'cancelled';
+    const safeBookings = Array.isArray(bookings) ? bookings : [];
 
-        if (activeTab === 'cancelled') return isCancelled;
-        if (activeTab === 'past') return isPast && !isCancelled;
-        if (activeTab === 'upcoming') return !isPast && !isCancelled;
-        return true;
+    const filteredBookings = safeBookings.filter(b => {
+        if (!b || !b.start_time) return false;
+        try {
+            const bookingDate = new Date(b.start_time);
+            const now = new Date();
+            const isPast = bookingDate < now;
+            const isCancelled = b.status === 'cancelled';
+
+            if (activeTab === 'cancelled') return isCancelled;
+            if (activeTab === 'past') return isPast && !isCancelled;
+            if (activeTab === 'upcoming') return !isPast && !isCancelled;
+            return true;
+        } catch (e) {
+            console.error("Invalid booking date", b);
+            return false;
+        }
     });
 
     if (loading) {
