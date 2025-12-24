@@ -13,6 +13,7 @@ import Settings from './pages/user/Settings';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import ResourceManagement from './pages/admin/ResourceManagement';
 import UserManagement from './pages/admin/UserManagement';
+import { Toaster } from 'sonner';
 
 function App() {
   return (
@@ -46,6 +47,7 @@ function App() {
           <Route path="*" element={<Navigate to="/auth/login" replace />} />
         </Routes>
       </Router>
+      <Toaster />
     </AuthProvider>
   );
 }

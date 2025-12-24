@@ -2,7 +2,7 @@ const pool = require('../config/database');
 
 class Booking {
     static async create(data) {
-        const { user_id, resource_id, booking_date, start_time, end_time, notes, attachment_url } = data;
+        const { user_id, resource_id, booking_date, start_time, end_time, notes = null, attachment_url = null } = data;
         const [result] = await pool.execute(
             'INSERT INTO bookings (user_id, resource_id, booking_date, start_time, end_time, notes, attachment_url) VALUES (?, ?, ?, ?, ?, ?, ?)',
             [user_id, resource_id, booking_date, start_time, end_time, notes, attachment_url]

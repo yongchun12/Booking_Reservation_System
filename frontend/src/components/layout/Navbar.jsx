@@ -39,27 +39,62 @@ export default function Navbar({ setSidebarOpen }) {
             {/* Right Actions */}
             <div className="flex items-center gap-2 ml-auto">
                 <ModeToggle />
-                <Button variant="ghost" size="icon">
-                    <Bell className="h-5 w-5" />
-                    <span className="sr-only">Notifications</span>
-                </Button>
+
+                {/* Notification Bell (Mock) */}
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="relative">
+                            <Bell className="h-5 w-5" />
+                            <span className="sr-only">Notifications</span>
+                            {/* Notification Dot */}
+                            <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-red-600 border border-background"></span>
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-80">
+                        <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <div className="max-h-[300px] overflow-y-auto">
+                            <DropdownMenuItem className="flex flex-col items-start p-3 cursor-pointer">
+                                <span className="font-medium text-sm">Booking Confirmed</span>
+                                <span className="text-xs text-muted-foreground mt-1">Your booking for Meeting Room A is confirmed.</span>
+                                <span className="text-[10px] text-muted-foreground mt-2">2 mins ago</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="flex flex-col items-start p-3 cursor-pointer">
+                                <span className="font-medium text-sm">New Feature</span>
+                                <span className="text-xs text-muted-foreground mt-1">Dark mode is now available!</span>
+                                <span className="text-[10px] text-muted-foreground mt-2">1 hour ago</span>
+                            </DropdownMenuItem>
+                        </div>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="justify-center text-xs text-muted-foreground cursor-pointer">
+                            Mark all as read
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
 
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="rounded-full">
-                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 p-0 border">
+                            <div className="h-full w-full rounded-full bg-primary/10 flex items-center justify-center overflow-hidden hover:bg-primary/20 transition-colors">
                                 <User className="h-5 w-5 text-primary" />
                             </div>
                         </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                    <DropdownMenuContent align="end" className="w-56">
+                        <DropdownMenuLabel>
+                            <div className="flex flex-col space-y-1">
+                                <p className="text-sm font-medium leading-none">{user?.name || 'User'}</p>
+                                <p className="text-xs leading-none text-muted-foreground">{user?.email || 'user@example.com'}</p>
+                            </div>
+                        </DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => navigate('/settings')}>
+                        <DropdownMenuItem onClick={() => navigate('/settings')} className="cursor-pointer">
                             <SettingsIcon className="mr-2 h-4 w-4" />
                             Settings
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={logout} className="text-red-600 focus:text-red-600">
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={logout} className="text-red-600 focus:text-red-600 cursor-pointer">
                             <LogOut className="mr-2 h-4 w-4" />
                             Log out
                         </DropdownMenuItem>

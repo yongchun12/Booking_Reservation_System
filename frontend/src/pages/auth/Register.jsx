@@ -7,7 +7,10 @@ import { useAuth } from '../../context/AuthContext';
 import Modal from '../../components/ui/modal';
 import { CheckCircle } from 'lucide-react';
 
+import { toast } from 'sonner';
+
 export default function Register() {
+    // ... hooks
     const [loading, setLoading] = useState(false);
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
@@ -21,7 +24,7 @@ export default function Register() {
         e.preventDefault();
 
         if (password !== confirmPassword) {
-            alert("Passwords do not match");
+            toast.error("Passwords do not match");
             return;
         }
 
@@ -29,8 +32,9 @@ export default function Register() {
         try {
             await register(name, email, password);
             setShowSuccessModal(true);
+            toast.success("Account created!");
         } catch (err) {
-            alert(err.response?.data?.message || 'Registration failed');
+            toast.error(err.response?.data?.message || 'Registration failed');
         } finally {
             setLoading(false);
         }
