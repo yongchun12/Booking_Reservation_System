@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Resource = require('../models/Resource');
-const auth = require('../middleware/auth');
+const { auth } = require('../middleware/auth');
 
 // Middleware to check if admin
 const adminAuth = (req, res, next) => {

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Booking = require('../models/Booking');
-const auth = require('../middleware/auth');
+const { auth } = require('../middleware/auth');
 const upload = require('../utils/s3Upload');
 
 // @route   GET /api/bookings
