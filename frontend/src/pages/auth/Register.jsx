@@ -4,6 +4,8 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { useAuth } from '../../context/AuthContext';
+import Modal from '../../components/ui/modal';
+import { CheckCircle } from 'lucide-react';
 
 export default function Register() {
     const [loading, setLoading] = useState(false);
@@ -11,6 +13,7 @@ export default function Register() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
     const { register } = useAuth();
     const navigate = useNavigate();
 
@@ -25,12 +28,17 @@ export default function Register() {
         setLoading(true);
         try {
             await register(name, email, password);
-            navigate('/dashboard');
+            setShowSuccessModal(true);
         } catch (err) {
             alert(err.response?.data?.message || 'Registration failed');
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleCloseModal = () => {
+        setShowSuccessModal(false);
+        navigate('/auth/login');
     };
 
     return (
@@ -93,6 +101,23 @@ export default function Register() {
                     Sign in
                 </Link>
             </div>
+
+            <Modal isOpen={showSuccessModal} onClose={handleCloseModal} title="Success">
+                <div className="flex flex-col items-center justify-center space-y-4 py-4">
+                    <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
+                        <CheckCircle className="h-6 w-6 text-green-600" />
+                    </div>
+                    <div className="text-center">
+                        <h4 className="text-lg font-medium">Account Created!</h4>
+                        <p className="text-sm text-muted-foreground mt-1">
+                            Your account has been successfully registered. Please log in to continue.
+                        </p>
+                    </div>
+                    <Button onClick={handleCloseModal} className="w-full">
+                        Go to Login
+                    </Button>
+                </div>
+            </Modal>
         </div>
     );
 }

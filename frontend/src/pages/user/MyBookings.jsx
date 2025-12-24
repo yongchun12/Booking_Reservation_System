@@ -1,50 +1,46 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
-import { cn } from '../../lib/utils'; // Make sure this is imported
-
-function MyTabs() {
-    return (
-        <Tab.Group>
-            <Tab.List className="flex space-x-1 rounded-xl bg-blue-900/20 p-1">
-                {['Upcoming', 'Past', 'Cancelled'].map((category) => (
-                    <Tab
-                        key={category}
-                        className={({ selected }) =>
-                            cn(
-                                'w-full rounded-lg py-2.5 text-sm font-medium leading-5 transition-all',
-                                'ring-white ring-opacity-60 ring-offset-2 ring-offset-blue-400 focus:outline-none focus:ring-2',
-                                selected
-                                    ? 'bg-white shadow text-primary'
-                                    : 'text-muted-foreground hover:bg-white/[0.12] hover:text-white'
-                            )
-                        }
-                    >
-                        {category}
-                    </Tab>
-                ))}
-            </Tab.List>
-            {/* Panels would go here */}
-        </Tab.Group>
-    )
-}
-
-// Since I am supposed to be quick, I'll use a simpler state-based tab for now to match specific styling needs easily.
-import { useState } from 'react';
+import { cn } from '../../lib/utils';
+import { Calendar, Clock, Loader2, MapPin } from 'lucide-react';
+import api from '../../lib/api';
+import { format, parseISO } from 'date-fns';
 
 export default function MyBookings() {
     const [activeTab, setActiveTab] = useState('upcoming');
+    const [bookings, setBookings] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-    const bookings = [
-        { id: 1, resource: 'Meeting Room A', date: '2024-12-25', time: '10:00 - 11:00', status: 'upcoming' },
-        { id: 2, resource: 'Projector', date: '2024-12-20', time: '14:00 - 15:00', status: 'past' },
-        { id: 3, resource: 'Conference Hall', date: '2024-12-28', time: '09:00 - 12:00', status: 'cancelled' },
-    ];
+    useEffect(() => {
+        const fetchBookings = async () => {
+            try {
+                const res = await api.get('/bookings');
+                setBookings(res.data);
+            } catch (error) {
+                console.error("Failed to fetch bookings", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchBookings();
+    }, []);
 
-    const filteredBookings = bookings.filter(b =>
-        activeTab === 'upcoming' ? b.status === 'upcoming' :
-            activeTab === 'past' ? b.status === 'past' :
-                b.status === 'cancelled'
-    );
+    // Filter logic
+    const filteredBookings = bookings.filter(b => {
+        const bookingDate = new Date(b.start_time);
+        const now = new Date();
+        const isPast = bookingDate < now;
+        const isCancelled = b.status === 'cancelled';
+
+        if (activeTab === 'cancelled') return isCancelled;
+        if (activeTab === 'past') return isPast && !isCancelled;
+        if (activeTab === 'upcoming') return !isPast && !isCancelled;
+        return true;
+    });
+
+    if (loading) {
+        return <div className="flex h-96 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+    }
 
     return (
         <div className="space-y-6">
@@ -70,24 +66,30 @@ export default function MyBookings() {
                 ))}
             </div>
 
-            <div className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2">
                 {filteredBookings.length === 0 ? (
-                    <div className="text-center py-12 text-muted-foreground">
-                        No bookings found in this category.
+                    <div className="col-span-full text-center py-12 text-muted-foreground bg-muted/20 rounded-lg">
+                        <p>No {activeTab} bookings found.</p>
+                        {activeTab === 'upcoming' && (
+                            <Button variant="link" className="mt-2 text-primary">Book a resource now</Button>
+                        )}
                     </div>
                 ) : (
                     filteredBookings.map((booking) => (
-                        <Card key={booking.id}>
-                            <CardHeader>
+                        <Card key={booking.id} className="transition-all hover:shadow-md border-muted">
+                            <CardHeader className="pb-3">
                                 <div className="flex justify-between items-start">
-                                    <div>
-                                        <CardTitle>{booking.resource}</CardTitle>
-                                        <CardDescription>{booking.date} | {booking.time}</CardDescription>
+                                    <div className="space-y-1">
+                                        <CardTitle className="text-lg">{booking.resource_name || 'Resource'}</CardTitle>
+                                        <div className="flex items-center text-sm text-muted-foreground">
+                                            <MapPin className="mr-1 h-3 w-3" />
+                                            {booking.resource_type || 'Room'}
+                                        </div>
                                     </div>
                                     <span className={cn(
-                                        "px-2 py-1 rounded-full text-xs font-medium capitalize",
-                                        booking.status === 'upcoming' && "bg-blue-100 text-blue-700",
-                                        booking.status === 'past' && "bg-gray-100 text-gray-700",
+                                        "px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize",
+                                        activeTab === 'upcoming' && "bg-blue-100 text-blue-700",
+                                        activeTab === 'past' && "bg-gray-100 text-gray-700",
                                         booking.status === 'cancelled' && "bg-red-100 text-red-700",
                                     )}>
                                         {booking.status}
@@ -95,15 +97,25 @@ export default function MyBookings() {
                                 </div>
                             </CardHeader>
                             <CardContent>
-                                <div className="flex gap-2 justify-end">
-                                    {booking.status === 'upcoming' && (
+                                <div className="grid grid-cols-2 gap-4 text-sm mb-4">
+                                    <div className="flex items-center">
+                                        <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
+                                        <span className="font-medium">{format(parseISO(booking.start_time), 'MMM d, yyyy')}</span>
+                                    </div>
+                                    <div className="flex items-center">
+                                        <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
+                                        <span>{format(parseISO(booking.start_time), 'h:mm a')} - {format(parseISO(booking.end_time), 'h:mm a')}</span>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2 justify-end pt-2 border-t">
+                                    {activeTab === 'upcoming' && (
                                         <>
                                             <Button variant="outline" size="sm">Reschedule</Button>
                                             <Button variant="destructive" size="sm">Cancel</Button>
                                         </>
                                     )}
-                                    {booking.status === 'past' && (
-                                        <Button variant="outline" size="sm">Book Again</Button>
+                                    {activeTab === 'past' && (
+                                        <Button variant="secondary" size="sm" className="w-full">Book Again</Button>
                                     )}
                                 </div>
                             </CardContent>

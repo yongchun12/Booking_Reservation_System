@@ -4,39 +4,68 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import Modal from '../../components/ui/modal';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
 
 export default function Calendar() {
     const [events, setEvents] = useState([
-        { title: 'Meeting Room A', start: new Date().toISOString().split('T')[0] + 'T10:00:00', end: new Date().toISOString().split('T')[0] + 'T12:00:00', backgroundColor: '#6366f1' },
-        { title: 'Projector', start: new Date(Date.now() + 86400000).toISOString().split('T')[0] + 'T14:00:00', backgroundColor: '#8b5cf6' }
+        { id: '1', title: 'Meeting Room A', start: new Date().toISOString().split('T')[0] + 'T10:00:00', end: new Date().toISOString().split('T')[0] + 'T12:00:00', backgroundColor: '#6366f1' },
     ]);
+    const [showModal, setShowModal] = useState(false);
+    const [selectedDate, setSelectedDate] = useState(null);
+    const [newEventTitle, setNewEventTitle] = useState('');
+    const [selectedEvent, setSelectedEvent] = useState(null); // For editing/deleting
 
     const handleDateSelect = (selectInfo) => {
-        let title = prompt('Please enter a new title for your event');
-        let calendarApi = selectInfo.view.calendar;
-
-        calendarApi.unselect(); // clear date selection
-
-        if (title) {
-            calendarApi.addEvent({
-                id: createEventId(),
-                title,
-                start: selectInfo.startStr,
-                end: selectInfo.endStr,
-                allDay: selectInfo.allDay
-            })
-        }
-    }
+        setSelectedDate(selectInfo);
+        setNewEventTitle('');
+        setSelectedEvent(null);
+        setShowModal(true);
+    };
 
     const handleEventClick = (clickInfo) => {
-        if (confirm(`Are you sure you want to delete the event '${clickInfo.event.title}'`)) {
-            clickInfo.event.remove()
+        // Simple delete for now as per "edit" request might imply modifying title
+        // But for quick MVP, let's just allow delete or re-title via same modal? 
+        // For simplicity: Click opens modal to Delete or Rename.
+        setSelectedEvent(clickInfo.event);
+        setNewEventTitle(clickInfo.event.title);
+        setShowModal(true);
+    };
+
+    const handleSaveEvent = () => {
+        if (!newEventTitle) return;
+
+        if (selectedEvent) {
+            // Update existing
+            selectedEvent.setProp('title', newEventTitle);
+        } else {
+            // Create new
+            const calendarApi = selectedDate.view.calendar;
+            calendarApi.unselect();
+            calendarApi.addEvent({
+                id: createEventId(),
+                title: newEventTitle,
+                start: selectedDate.startStr,
+                end: selectedDate.endStr,
+                allDay: selectedDate.allDay,
+                backgroundColor: '#6366f1'
+            });
         }
-    }
+        setShowModal(false);
+    };
+
+    const handleDeleteEvent = () => {
+        if (selectedEvent) {
+            selectedEvent.remove();
+            setShowModal(false);
+        }
+    };
 
     let eventGuid = 0;
     function createEventId() {
-        return String(eventGuid++)
+        return String(eventGuid++) + Date.now();
     }
 
     return (
@@ -67,12 +96,41 @@ export default function Calendar() {
                             select={handleDateSelect}
                             eventClick={handleEventClick}
                             height="100%"
-
-                        // Tailwind Customization Hooks could go here or via CSS
                         />
                     </div>
                 </CardContent>
             </Card>
+
+            <Modal
+                isOpen={showModal}
+                onClose={() => setShowModal(false)}
+                title={selectedEvent ? "Edit Event" : "Create Booking"}
+            >
+                <div className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="title">Event Title / Purpose</Label>
+                        <Input
+                            id="title"
+                            value={newEventTitle}
+                            onChange={(e) => setNewEventTitle(e.target.value)}
+                            placeholder="e.g. Team Meeting"
+                        />
+                    </div>
+                    <div className="flex justify-end gap-2 pt-2">
+                        {selectedEvent && (
+                            <Button variant="destructive" onClick={handleDeleteEvent}>
+                                Delete
+                            </Button>
+                        )}
+                        <Button variant="outline" onClick={() => setShowModal(false)}>
+                            Cancel
+                        </Button>
+                        <Button onClick={handleSaveEvent}>
+                            {selectedEvent ? "Update" : "Create"}
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }
