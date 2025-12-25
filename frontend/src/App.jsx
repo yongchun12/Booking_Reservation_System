@@ -14,6 +14,7 @@ import NewBooking from './pages/user/NewBooking';
 import Settings from './pages/user/Settings';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import ResourceManagement from './pages/admin/ResourceManagement';
+import CategoryManagement from './pages/admin/CategoryManagement';
 import UserManagement from './pages/admin/UserManagement';
 import { Toaster } from 'sonner';
 
@@ -44,6 +45,7 @@ function App() {
               {/* Admin Routes */}
               <Route path="admin" element={<AdminDashboard />} />
               <Route path="admin/resources" element={<ResourceManagement />} />
+              <Route path="admin/categories" element={<CategoryManagement />} />
               <Route path="admin/users" element={<UserManagement />} />
             </Route>
 

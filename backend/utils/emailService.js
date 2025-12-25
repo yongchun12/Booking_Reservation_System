@@ -30,7 +30,7 @@ async function sendOTP(toEmail, otp, type = 'register') {
     const htmlBody = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
             <h2 style="color: #333;">${subject}</h2>
-            <p>You are ${action} <strong>Sunway Booking System</strong>.</p>
+            <p>You are ${action} <strong>CSC3074 - Booking Reservation System</strong>.</p>
             <p>Your Verification Code is:</p>
             <div style="background-color: #f4f4f4; padding: 15px; text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 5px; border-radius: 5px;">
                 ${otp}
@@ -41,7 +41,7 @@ async function sendOTP(toEmail, otp, type = 'register') {
 
     try {
         const info = await transporter.sendMail({
-            from: '"Sunway Booking" <postmaster@sandbox58f5c26ea33b441e890efaf90ebc9e19.mailgun.org>', // Must use the sandbox domain
+            from: '"CSC3074 - Booking Reservation System" <postmaster@sandbox58f5c26ea33b441e890efaf90ebc9e19.mailgun.org>', // Must use the sandbox domain
             to: toEmail,
             subject: subject,
             html: htmlBody,

@@ -46,6 +46,25 @@ class Booking {
         return result.affectedRows > 0;
     }
 
+    static async updateAttendeeStatus(bookingId, userId, status) {
+        const [result] = await pool.execute(
+            'UPDATE booking_attendees SET status = ? WHERE booking_id = ? AND user_id = ?',
+            [status, bookingId, userId]
+        );
+        return result.affectedRows > 0;
+    }
+
+    static async getAttendees(bookingId) {
+        const [rows] = await pool.execute(
+            `SELECT u.id, u.name, u.email, ba.status 
+             FROM booking_attendees ba 
+             JOIN users u ON ba.user_id = u.id 
+             WHERE ba.booking_id = ?`,
+            [bookingId]
+        );
+        return rows;
+    }
+
     static async checkAvailability(resourceId, date, startTime, endTime) {
         // Simple overlap check
         const [rows] = await pool.execute(

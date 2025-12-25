@@ -21,6 +21,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
         navigation.push(
             { name: 'Admin Dashboard', href: '/admin', icon: LayoutDashboard },
             { name: 'Manage Resources', href: '/admin/resources', icon: Box },
+            { name: 'Manage Categories', href: '/admin/categories', icon: Package }, // Re-using Package icon or similar
             { name: 'Manage Users', href: '/admin/users', icon: Users }
         );
     }
@@ -43,7 +44,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
             )}>
                 {/* Header */}
                 <div className="flex h-16 items-center justify-between px-6 border-b">
-                    <span className="text-xl font-bold tracking-tight text-primary">BookingApp</span>
+                    <span className="text-xl font-bold tracking-tight text-primary">CSC3074 Booking Sys</span>
                     <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setSidebarOpen(false)}>
                         <X className="h-5 w-5" />
                     </Button>

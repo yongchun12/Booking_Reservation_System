@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../../components/ui/card';
-import { Input } from '../../components/ui/input';
+import { Input } from '../../components/ui/input'; // Keeping Input for search
 import { Label } from '../../components/ui/label';
 import { Calendar as CalendarIcon, Clock, CheckCircle, ChevronRight, ChevronLeft, Loader2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { DatePicker } from '../../components/ui/date-picker';
+import { TimeSelect } from '../../components/ui/time-select';
+import { format } from 'date-fns';
 import api from '../../lib/api';
 import { toast } from 'sonner';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -39,6 +42,7 @@ export default function NewBooking() {
     // User Search State
     const [users, setUsers] = useState([]);
     const [fetchingUsers, setFetchingUsers] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
 
     // Handle "Book Again" or redirected state
     useEffect(() => {
@@ -190,15 +194,28 @@ export default function NewBooking() {
                     {currentStep === 1 && (
                         <div className="grid gap-4 sm:grid-cols-2">
                             <div className="space-y-2">
-                                <Label>Date</Label>
-                                <Input type="date" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} />
+                                <Label>Select Date</Label>
+                                <DatePicker
+                                    date={formData.date ? new Date(formData.date) : undefined}
+                                    setDate={(d) => setFormData({ ...formData, date: d ? format(d, 'yyyy-MM-dd') : '' })}
+                                />
                             </div>
                             <div className="space-y-2">
                                 <Label>Time Range</Label>
                                 <div className="flex gap-2 items-center">
-                                    <Input type="time" value={formData.startTime} onChange={(e) => setFormData({ ...formData, startTime: e.target.value })} />
+                                    <div className="flex-1">
+                                        <TimeSelect
+                                            value={formData.startTime}
+                                            onChange={(v) => setFormData({ ...formData, startTime: v })}
+                                        />
+                                    </div>
                                     <span>-</span>
-                                    <Input type="time" value={formData.endTime} onChange={(e) => setFormData({ ...formData, endTime: e.target.value })} />
+                                    <div className="flex-1">
+                                        <TimeSelect
+                                            value={formData.endTime}
+                                            onChange={(v) => setFormData({ ...formData, endTime: v })}
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -232,11 +249,20 @@ export default function NewBooking() {
                     {currentStep === 3 && (
                         <div className="space-y-4">
                             <Label>Invited Attendees (Optional)</Label>
+
+                            {/* Search Input */}
+                            <Input
+                                placeholder="Search by name..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="mb-2"
+                            />
+
                             {fetchingUsers ? (
                                 <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
                             ) : (
                                 <div className="grid gap-2 sm:grid-cols-3 max-h-60 overflow-y-auto">
-                                    {users.map((u) => (
+                                    {users.filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase())).map((u) => (
                                         <div
                                             key={u.id}
                                             className={cn(
@@ -252,7 +278,9 @@ export default function NewBooking() {
                                             {formData.attendees.includes(u.id) && <CheckCircle className="h-4 w-4 text-primary ml-auto" />}
                                         </div>
                                     ))}
-                                    {users.length === 0 && <p className="text-sm text-muted-foreground col-span-3">No other users found.</p>}
+                                    {users.filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && (
+                                        <p className="text-sm text-muted-foreground col-span-3">No users found matching "{searchTerm}".</p>
+                                    )}
                                 </div>
                             )}
                         </div>

@@ -48,6 +48,7 @@ function ResourceManagementContent() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [resources, setResources] = useState([]);
+    const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
 
     // Delete Modal State
@@ -71,12 +72,16 @@ function ResourceManagementContent() {
 
     const fetchResources = async () => {
         try {
-            const res = await api.get('/resources');
+            const [resResources, resCategories] = await Promise.all([
+                api.get('/resources'),
+                api.get('/categories')
+            ]);
             // Ensure data is array
-            setResources(Array.isArray(res.data) ? res.data : []);
+            setResources(Array.isArray(resResources.data) ? resResources.data : []);
+            setCategories(Array.isArray(resCategories.data) ? resCategories.data : []);
         } catch (error) {
             console.error(error);
-            toast.error("Failed to fetch resources");
+            toast.error("Failed to fetch data");
             setResources([]);
         } finally {
             setLoading(false);
@@ -260,9 +265,10 @@ function ResourceManagementContent() {
                             value={formData.type}
                             onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                         >
-                            <option>Room</option>
-                            <option>Equipment</option>
-                            <option>Hall</option>
+                            {categories.map(cat => (
+                                <option key={cat.id} value={cat.name}>{cat.name}</option>
+                            ))}
+                            {categories.length === 0 && <option>Room</option>}
                         </select>
                     </div>
                     <div className="space-y-2">

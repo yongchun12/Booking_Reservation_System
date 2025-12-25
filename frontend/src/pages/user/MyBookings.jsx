@@ -103,7 +103,15 @@ export default function MyBookings() {
     const getBookingDateTime = (booking, timeStr) => {
         if (!booking.booking_date || !timeStr) return null;
         try {
-            const dateStr = booking.booking_date.includes('T') ? booking.booking_date.split('T')[0] : booking.booking_date;
+            // Handle both string and Date object
+            let dateStr;
+            if (booking.booking_date instanceof Date) {
+                dateStr = format(booking.booking_date, 'yyyy-MM-dd');
+            } else {
+                dateStr = booking.booking_date.toString().includes('T')
+                    ? booking.booking_date.toString().split('T')[0]
+                    : booking.booking_date.toString();
+            }
             return new Date(`${dateStr}T${timeStr}`);
         } catch (e) {
             console.error("Date parse error", e);
@@ -115,9 +123,13 @@ export default function MyBookings() {
 
     const filteredBookings = safeBookings.filter(b => {
         const startDateTime = getBookingDateTime(b, b.start_time);
+        const endDateTime = getBookingDateTime(b, b.end_time);
+
         if (!startDateTime || !isValid(startDateTime)) return false;
 
-        const isExpired = isPast(startDateTime);
+        // An event is "Past" only if it has fully ended.
+        // An event is "Upcoming" (or Active) if it hasn't ended yet.
+        const isExpired = isPast(endDateTime || startDateTime);
         const isCancelled = b.status === 'cancelled';
 
         if (activeTab === 'cancelled') return isCancelled;

@@ -5,12 +5,57 @@ const { auth } = require('../middleware/auth');
 const upload = require('../utils/s3Upload');
 
 // @route   GET /api/bookings
-// @desc    Get user's bookings
+// @desc    Get user's bookings (Created by them OR Invited to)
 // @access  Private
 router.get('/', auth, async (req, res) => {
     try {
-        const bookings = await Booking.findByUserId(req.user.id);
-        res.json(bookings);
+        const pool = require('../config/database');
+
+        // 1. Get bookings created by user
+        const ownBookings = await Booking.findByUserId(req.user.id);
+
+        // 2. Get bookings where user is an attendee
+        const [invitedBookings] = await pool.execute(
+            `SELECT b.*, r.name as resource_name, r.type as resource_type, ba.status as my_rsvp_status
+             FROM bookings b 
+             JOIN resources r ON b.resource_id = r.id 
+             JOIN booking_attendees ba ON b.id = ba.booking_id
+             WHERE ba.user_id = ? 
+             ORDER BY b.booking_date DESC, b.start_time DESC`,
+            [req.user.id]
+        );
+
+        // Combine and distinct
+        // Note: ownBookings items won't have 'my_rsvp_status'. We can default it or leave undefined.
+        // But we want to attach FULL attendee list to ALL returned bookings for the details view.
+
+        // Initial list of basic booking info
+        // We need to merge them. If user created it, they are 'owner'.
+        // If invited, they are 'attendee'.
+
+        // Let's just process the list.
+        const allBookingsMap = new Map();
+
+        ownBookings.forEach(b => {
+            allBookingsMap.set(b.id, { ...b, is_owner: true });
+        });
+
+        invitedBookings.forEach(b => {
+            if (!allBookingsMap.has(b.id)) {
+                allBookingsMap.set(b.id, { ...b, is_owner: false });
+            }
+        });
+
+        const allBookings = Array.from(allBookingsMap.values());
+
+        // 3. Attach Attendees to each booking
+        // This might be N+1 query problem but for this scale it's fine.
+        const bookingsWithAttendees = await Promise.all(allBookings.map(async (booking) => {
+            const attendees = await Booking.getAttendees(booking.id);
+            return { ...booking, attendees };
+        }));
+
+        res.json(bookingsWithAttendees);
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server error');
@@ -138,6 +183,35 @@ router.post('/:id/upload', [auth, upload.single('file')], async (req, res) => {
             fileUrl: req.file.location
         });
 
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server error');
+    }
+});
+
+// @route   PUT /api/bookings/:id/rsvp
+// @desc    Update RSVP status (accept/decline)
+// @access  Private
+router.put('/:id/rsvp', auth, async (req, res) => {
+    const { status } = req.body; // 'accepted' or 'declined'
+    try {
+        if (!['accepted', 'declined'].includes(status)) {
+            return res.status(400).json({ message: 'Invalid status' });
+        }
+
+        // Check if user is an attendee
+        const pool = require('../config/database');
+        const [rows] = await pool.execute(
+            'SELECT * FROM booking_attendees WHERE booking_id = ? AND user_id = ?',
+            [req.params.id, req.user.id]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({ message: 'You are not invited to this booking' });
+        }
+
+        await Booking.updateAttendeeStatus(req.params.id, req.user.id, status);
+        res.json({ message: `Booking ${status}` });
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server error');

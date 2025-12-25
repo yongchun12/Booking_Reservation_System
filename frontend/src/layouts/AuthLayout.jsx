@@ -14,7 +14,7 @@ export default function AuthLayout() {
             <div className="relative hidden w-0 flex-1 lg:block">
                 <div className="absolute inset-0 h-full w-full bg-gradient-to-br from-indigo-600 to-violet-600 object-cover flex items-center justify-center">
                     <div className="text-white text-center p-12">
-                        <h1 className="text-4xl font-bold mb-4">Modern Space Booking</h1>
+                        <h1 className="text-4xl font-bold mb-4">CSC3074 - Booking Reservation System</h1>
                         <p className="text-lg opacity-90">Experience the future of reservation management.</p>
                     </div>
                     {/* You can add an <img> here instead */}

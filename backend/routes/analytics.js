@@ -82,9 +82,28 @@ router.get('/user/stats', auth, async (req, res) => {
             `, [userId])
         ]);
 
-        // Mock monthly data (can be replaced with real aggregation later)
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-        const monthlyData = months.map(m => ({ name: m, bookings: Math.floor(Math.random() * 5) }));
+        // Real monthly data aggregation (Last 6 months)
+        const [monthlyRows] = await db.query(`
+            SELECT DATE_FORMAT(booking_date, '%b') as name, COUNT(*) as bookings 
+            FROM bookings 
+            WHERE user_id = ? 
+            AND booking_date >= DATE_SUB(NOW(), INTERVAL 5 MONTH) 
+            GROUP BY DATE_FORMAT(booking_date, '%Y-%m'), name 
+            ORDER BY DATE_FORMAT(booking_date, '%Y-%m') ASC
+        `, [userId]);
+
+        // Ensure all last 6 months are present, even if zero
+        const months = [];
+        for (let i = 5; i >= 0; i--) {
+            const d = new Date();
+            d.setMonth(d.getMonth() - i);
+            months.push(d.toLocaleString('default', { month: 'short' }));
+        }
+
+        const monthlyData = months.map(m => {
+            const found = monthlyRows.find(r => r.name === m);
+            return { name: m, bookings: found ? found.bookings : 0 };
+        });
 
         res.json({
             totalBookings: totalBookings[0].count,

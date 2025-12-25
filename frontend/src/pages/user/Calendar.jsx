@@ -12,6 +12,7 @@ import { Label } from '../../components/ui/label';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'sonner';
+import { cn } from '../../lib/utils'; // Add util import
 
 export default function Calendar() {
     const [events, setEvents] = useState([]);
@@ -25,6 +26,19 @@ export default function Calendar() {
     // Delete Modal
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [deleting, setDeleting] = useState(false);
+
+    // RSVP Handler
+    const handleRSVP = async (status) => {
+        if (!selectedEvent) return;
+        try {
+            await api.put(`/bookings/${selectedEvent.id}/rsvp`, { status });
+            toast.success(`You have ${status} this invitation.`);
+            setShowModal(false);
+            fetchEvents();
+        } catch (err) {
+            toast.error(err.response?.data?.message || "RSVP failed");
+        }
+    };
 
     // Fetch Bookings
     useEffect(() => {
@@ -41,7 +55,11 @@ export default function Calendar() {
                 start: `${booking.booking_date.split('T')[0]}T${booking.start_time}`,
                 end: `${booking.booking_date.split('T')[0]}T${booking.end_time}`,
                 backgroundColor: booking.status === 'confirmed' ? '#10b981' : '#6366f1',
-                extendedProps: { ...booking }
+                extendedProps: {
+                    ...booking,
+                    // If 'attendees' is missing, default to empty
+                    attendees: booking.attendees || []
+                }
             }));
             setEvents(calendarEvents);
         } catch (err) {
@@ -221,18 +239,55 @@ export default function Calendar() {
                         </div>
                     </div>
 
-                    <div className="flex justify-end gap-2 pt-2">
-                        {selectedEvent && (
+                    {/* RSVP Section in Modal */}
+                    <div className="pt-4 border-t">
+                        <h4 className="font-semibold mb-2">Attendees</h4>
+                        <div className="space-y-2 mb-4">
+                            {selectedEvent?.extendedProps?.attendees?.length > 0 ? (
+                                selectedEvent.extendedProps.attendees.map(att => (
+                                    <div key={att.id} className="flex justify-between items-center text-sm p-2 bg-muted rounded">
+                                        <span>{att.name}</span>
+                                        <span className={cn(
+                                            "uppercase text-xs font-bold px-2 py-1 rounded",
+                                            att.status === 'accepted' ? "bg-green-100 text-green-700" :
+                                                att.status === 'declined' ? "bg-red-100 text-red-700" :
+                                                    "bg-yellow-100 text-yellow-700"
+                                        )}>
+                                            {att.status || 'Pending'}
+                                        </span>
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="text-sm text-muted-foreground">No attendees invited.</p>
+                            )}
+                        </div>
+
+                        {/* RSVP Actions (Only if I am an attendee) */}
+                        {!selectedEvent?.extendedProps?.is_owner && selectedEvent && (
+                            <div className="flex justify-between items-center pt-2">
+                                <span className="text-sm font-medium">Your Response:</span>
+                                <div className="flex gap-2">
+                                    <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => handleRSVP('declined')}>Decline</Button>
+                                    <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => handleRSVP('accepted')}>Accept</Button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-4 border-t mt-4">
+                        {selectedEvent?.extendedProps?.is_owner && (
                             <Button variant="destructive" onClick={handleDeleteClick}>
-                                Delete
+                                Cancel Booking
                             </Button>
                         )}
                         <Button variant="outline" onClick={() => setShowModal(false)}>
-                            Cancel
+                            Close
                         </Button>
-                        <Button onClick={handleSaveEvent}>
-                            {selectedEvent ? "Update" : "Create"}
-                        </Button>
+                        {!selectedEvent && (
+                            <Button onClick={handleSaveEvent}>
+                                Create
+                            </Button>
+                        )}
                     </div>
                 </div>
             </Modal>
