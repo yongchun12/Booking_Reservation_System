@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Outlet, Navigate } from 'react-router-dom';
 import Sidebar from '../components/layout/Sidebar';
 import Navbar from '../components/layout/Navbar';
+import GlobalSearch from '../components/layout/GlobalSearch';
 import { useAuth } from '../context/AuthContext';
 
 export default function DashboardLayout() {
@@ -31,6 +32,7 @@ export default function DashboardLayout() {
                     <Outlet />
                 </main>
             </div>
+            <GlobalSearch />
         </div>
     );
 }

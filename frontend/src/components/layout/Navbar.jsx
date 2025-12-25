@@ -69,12 +69,16 @@ export default function Navbar({ setSidebarOpen }) {
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                         type="search"
-                        placeholder="Search resources..."
-                        className="w-full bg-background pl-8 md:w-[300px] lg:w-[400px]"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        onKeyDown={handleSearch}
+                        placeholder="Search... (Command+K)"
+                        className="w-full bg-background pl-8 md:w-[300px] lg:w-[400px] cursor-pointer"
+                        readOnly
+                        onClick={() => window.dispatchEvent(new Event('open-global-search'))}
                     />
+                    <div className="absolute right-2 top-2 hidden md:flex items-center gap-1 pointer-events-none">
+                        <kbd className="inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+                            <span className="text-xs">⌘</span>K
+                        </kbd>
+                    </div>
                 </div>
             </div>
 

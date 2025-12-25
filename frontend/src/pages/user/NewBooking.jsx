@@ -43,13 +43,14 @@ export default function NewBooking() {
     // Handle "Book Again" or redirected state
     useEffect(() => {
         if (location.state) {
-            if (location.state.resourceId) {
-                setFormData(prev => ({
-                    ...prev,
-                    resource: location.state.resourceId,
-                    resourceName: location.state.resourceName || 'Selected Resource'
-                }));
-            }
+            setFormData(prev => ({
+                ...prev,
+                resource: location.state.resourceId || prev.resource,
+                resourceName: location.state.resourceName || prev.resourceName || 'Selected Resource',
+                date: location.state.date || prev.date,
+                startTime: location.state.startTime || prev.startTime,
+                endTime: location.state.endTime || prev.endTime
+            }));
         }
     }, [location.state]);
 

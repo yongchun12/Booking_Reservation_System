@@ -27,12 +27,12 @@ export default function AdminDashboard() {
 
             {/* Overview Charts */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-                <Card className="col-span-4">
+                <Card className="col-span-full lg:col-span-4 min-w-0">
                     <CardHeader>
                         <CardTitle>Booking Trends</CardTitle>
                     </CardHeader>
                     <CardContent className="pl-2">
-                        <div className="h-[300px]">
+                        <div className="h-[300px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
                                 <AreaChart data={areaData}>
                                     <defs>
@@ -52,12 +52,12 @@ export default function AdminDashboard() {
                     </CardContent>
                 </Card>
 
-                <Card className="col-span-3">
+                <Card className="col-span-full md:col-span-1 lg:col-span-3 min-w-0">
                     <CardHeader>
                         <CardTitle>Resource Utilization</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="h-[300px]">
+                        <div className="h-[300px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
                                     <Pie

@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
-const { auth, isAdmin } = require('../middleware/auth');
+const { auth, adminAuth } = require('../middleware/auth');
 
 // Get Admin Dashboard Stats
-router.get('/admin/stats', auth, isAdmin, async (req, res) => {
+router.get('/admin/stats', auth, adminAuth, async (req, res) => {
     try {
         // Parallelize queries for performance
         const [

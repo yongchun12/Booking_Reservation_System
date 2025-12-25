@@ -1,6 +1,13 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
 import ConfirmModal from '../../components/ui/confirm-modal';
+import { cn } from '../../lib/utils';
+import { Calendar, Clock, Loader2, MapPin } from 'lucide-react';
+import api from '../../lib/api';
 import { toast } from 'sonner';
+import { format, parseISO, isPast, isValid } from 'date-fns';
 
 export default function MyBookings() {
     const navigate = useNavigate();
@@ -33,8 +40,9 @@ export default function MyBookings() {
             state: {
                 resourceId: booking.resource_id,
                 resourceName: booking.resource_name,
-                // Optional: Pass dates if we want to pre-fill them too
-                // date: booking.booking_date
+                date: booking.booking_date.split('T')[0],
+                startTime: booking.start_time,
+                endTime: booking.end_time
             }
         });
     };

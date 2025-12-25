@@ -19,7 +19,7 @@ exports.auth = (req, res, next) => {
     }
 };
 
-exports.isAdmin = (req, res, next) => {
+exports.adminAuth = (req, res, next) => {
     if (req.user && req.user.role === 'admin') {
         next();
     } else {

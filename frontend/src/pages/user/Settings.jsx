@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import api from '../../lib/api';
+import { Loader2, Upload, User } from 'lucide-react';
 
 export default function Settings() {
     const { user } = useAuth();
@@ -13,42 +14,53 @@ export default function Settings() {
 
     // Profile State
     const [name, setName] = useState(user?.name || '');
+    const [file, setFile] = useState(null);
 
     // Password State
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
 
-    const handleUpdateProfile = async () => {
+    if (!user) {
+        return <div className="flex h-96 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+    }
+
+    const handleChangePassword = async () => {
+        if (newPassword !== confirmPassword) {
+            return toast.error("New passwords do not match");
+        }
         setLoading(true);
         try {
-            await api.put('/auth/update-details', { name });
-            toast.success("Profile updated successfully!");
-            // Optionally reload user context here if you had a reloadUser function
+            await api.put('/auth/update-password', { currentPassword, newPassword });
+            toast.success("Password updated successfully");
+            setCurrentPassword('');
+            setNewPassword('');
+            setConfirmPassword('');
         } catch (err) {
-            console.error(err);
-            toast.error(err.response?.data?.message || "Failed to update profile.");
+            toast.error(err.response?.data?.message || "Failed to update password");
         } finally {
             setLoading(false);
         }
     };
 
-    const handleChangePassword = async () => {
-        if (newPassword !== confirmPassword) {
-            toast.error("New passwords do not match");
-            return;
-        }
-
+    const handleUpdateProfile = async () => {
         setLoading(true);
         try {
-            await api.put('/auth/update-password', { currentPassword, newPassword });
-            toast.success("Password changed successfully!");
-            setCurrentPassword('');
-            setNewPassword('');
-            setConfirmPassword('');
+            const formData = new FormData();
+            formData.append('name', name);
+            if (file) {
+                formData.append('profilePicture', file);
+            }
+
+            const res = await api.put('/auth/update-details', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
+            toast.success("Profile updated successfully!");
+            // Ideally reload user context here
         } catch (err) {
             console.error(err);
-            toast.error(err.response?.data?.message || "Failed to change password");
+            toast.error(err.response?.data?.message || "Failed to update profile.");
         } finally {
             setLoading(false);
         }
@@ -66,6 +78,43 @@ export default function Settings() {
                         <CardDescription>Update your personal information.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
+                        <div className="flex items-center gap-6">
+                            <div className="shrink-0">
+                                <div className="h-24 w-24 rounded-full bg-muted flex items-center justify-center overflow-hidden border-2 border-border relative">
+                                    {(user?.profile_picture || (file && URL.createObjectURL(file))) ? (
+                                        <img
+                                            src={file ? URL.createObjectURL(file) : user?.profile_picture}
+                                            alt="Profile"
+                                            className="h-full w-full object-cover"
+                                        />
+                                    ) : (
+                                        <User className="h-10 w-10 text-muted-foreground" />
+                                    )}
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="picture" className="text-base font-semibold">Profile Picture</Label>
+                                <div className="flex items-center gap-2">
+                                    <Input
+                                        id="picture"
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => setFile(e.target.files[0])}
+                                        className="hidden"
+                                    />
+                                    <Label
+                                        htmlFor="picture"
+                                        className="flex items-center gap-2 px-4 py-2 border rounded-md cursor-pointer hover:bg-muted transition-colors text-sm font-medium"
+                                    >
+                                        <Upload className="h-4 w-4" />
+                                        Upload New Picture
+                                    </Label>
+                                    {file && <span className="text-xs text-muted-foreground">{file.name}</span>}
+                                </div>
+                                <p className="text-xs text-muted-foreground">JPG, GIF or PNG. Max size 2MB.</p>
+                            </div>
+                        </div>
+
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="name">Full Name</Label>

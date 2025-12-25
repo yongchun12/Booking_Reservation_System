@@ -112,23 +112,45 @@ router.get('/me', auth, async (req, res) => {
     }
 });
 
+const upload = require('../utils/s3Upload');
+
+// ... (other imports)
+
 // @route   PUT /api/auth/update-details
 // @desc    Update user details
 // @access  Private
-router.put('/update-details', auth, async (req, res) => {
-    const { name, email } = req.body;
+router.put('/update-details', [auth, upload.single('profilePicture')], async (req, res) => {
+    const { name } = req.body;
     try {
         const user = await User.findById(req.user.id);
         if (!user) return res.status(404).json({ message: 'User not found' });
 
-        // Update fields if provided
-        if (name) {
-            const pool = require('../config/database');
-            await pool.execute('UPDATE users SET name = ? WHERE id = ?', [name, req.user.id]);
-        }
-        // Email update logic could go here but skipping for simplicity as it might require re-verification
+        const pool = require('../config/database');
 
-        res.json({ message: 'Profile updated successfully' });
+        // Build query efficiently
+        let fields = [];
+        let values = [];
+
+        if (name) {
+            fields.push('name = ?');
+            values.push(name);
+        }
+
+        if (req.file) {
+            fields.push('profile_picture = ?');
+            values.push(req.file.location);
+        }
+
+        if (fields.length > 0) {
+            values.push(req.user.id);
+            const sql = `UPDATE users SET ${fields.join(', ')} WHERE id = ?`;
+            await pool.execute(sql, values);
+        }
+
+        res.json({
+            message: 'Profile updated successfully',
+            profile_picture: req.file ? req.file.location : undefined
+        });
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server error');

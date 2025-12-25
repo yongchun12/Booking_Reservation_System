@@ -48,13 +48,24 @@ router.post('/', [auth, validateBooking], async (req, res) => {
             return res.status(400).json({ message: 'Resource is not available at this time' });
         }
 
+        // Check Capacity
+        const Resource = require('../models/Resource');
+        const resource = await Resource.findById(resource_id);
+        if (!resource) return res.status(404).json({ message: 'Resource not found' });
+
+        const attendeeCount = 1 + (req.body.attendee_ids && Array.isArray(req.body.attendee_ids) ? req.body.attendee_ids.length : 0);
+        if (resource.capacity && attendeeCount > resource.capacity) {
+            return res.status(400).json({ message: `Capacity exceeded. Resource capacity is ${resource.capacity}, but you have ${attendeeCount} people.` });
+        }
+
         const bookingId = await Booking.create({
             user_id: req.user.id,
             resource_id,
             booking_date,
             start_time,
             end_time,
-            notes
+            notes,
+            status: 'confirmed' // Auto-approve
         });
 
         // Add Attendees if provided

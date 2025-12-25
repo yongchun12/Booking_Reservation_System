@@ -115,7 +115,7 @@ export default function Calendar() {
             setShowModal(false);
             toast.success("Event saved");
         } catch (err) {
-            alert(err.response?.data?.message || "Booking failed");
+            toast.error(err.response?.data?.message || "Booking failed");
         }
     };
 
@@ -170,6 +170,16 @@ export default function Calendar() {
                             eventClick={handleEventClick}
                             height="100%"
                         />
+                    </div>
+                    <div className="mt-4 flex items-center gap-4 text-sm">
+                        <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full bg-[#10b981]"></div>
+                            <span>Confirmed</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full bg-[#6366f1]"></div>
+                            <span>Pending / Other</span>
+                        </div>
                     </div>
                 </CardContent>
             </Card>
