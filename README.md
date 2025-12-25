@@ -24,7 +24,7 @@ The system is architected to be **cloud-native**, leveraging Amazon Web Services
 ### 👤 User Features (Public/Private)
 1.  **Authentication & Security**
     -   Secure Registration & Login with JWT.
-    -   **Email Verification & OTP**: Two-factor authentication flow using AWS SES.
+    -   **Email Verification & OTP**: Two-factor authentication flow using **Mailgun SMTP** (due to AWS Learner Lab sandbox restrictions).
     -   **Password Reset**: Secure implementation for lost passwords.
     -   **Profile Management**: Update personal details, change password, and **upload profile pictures** (stored on S3).
 
@@ -38,7 +38,7 @@ The system is architected to be **cloud-native**, leveraging Amazon Web Services
         -   Step-by-step wizard.
         -   **Availability Check**: Real-time conflict detection.
         -   **Add Attendees**: Invite other users to the booking.
-        -   **Email Notifications**: Auto-send invites to attendees via Mailgun/SES.
+        -   **Email Notifications**: Auto-send invites using Mailgun.
     -   **My Bookings**:
         -   Filter by Upcoming / Past / Cancelled.
         -   **Reschedule**: Drag-and-drop or form-based editing.
@@ -79,9 +79,9 @@ The system is fully deployed on the AWS Cloud ecosystem:
 | :--- | :--- |
 | **Amazon EC2** | **Compute**: Hosts the Node.js Backend and React Frontend (served via Nginx).<br>- OS: Ubuntu 22.04 LTS.<br>- **PM2**: Used for process management and zero-downtime reloads.<br>- **Nginx**: Reverse proxy to route traffic between port 80 and localhost:5000. |
 | **Amazon RDS** | **Database**: Managed MySQL instance.<br>- Ensures high availability and automated backups.<br>- **Security Group**: Inbound rules restricted to the EC2 instance only (Port 3306). |
-| **Amazon S3** | **Storage**: Object storage for images (Profile Pictures & Resource Photos).<br>- **Middleware**: `multer-s3` handles direct uploads.<br>- **Fallback**: Implemented a "Local Fallback" mechanism to save files to disk if S3 connectivity is interrupted, ensuring system robustness. |
-| **Amazon SES** | **Email**: Simple Email Service for sending transactional emails (OTPs, Booking Confirmations). |
-| **IAM** | **Security**: Least-privilege IAM users created for S3 access (`AmazonS3FullAccess` limited to specific buckets). |
+| **Amazon S3** | **Storage**: Object storage for images (Profile Pictures & Resource Photos).<br>- **Middleware**: `multer-s3` handles direct uploads.<br>- **Credentials**: Used `AWS_SESSION_TOKEN` (Temporary Credentials) as mandated by the Learner Lab environment.<br>- **Fallback**: Implemented a "Local Fallback" mechanism to save files to disk if S3 connectivity is interrupted. |
+| **Mailgun (SMTP)** | **Email Service**: Replaced Amazon SES for this assignment.<br>- **Reason**: AWS Learner Lab Sandbox does not permit SES usage/identity verification.<br>- **Implementation**: Used `nodemailer` with Mailgun Sandbox SMTP for reliable delivery of OTPs and booking invites. |
+| **IAM** | **Security**: Utilized the pre-defined **`LabRole`**.<br>- **Constraint**: Custom IAM user creation is restricted in the Learner Lab, so the system operates under the provided temporary role credentials. |
 
 ### 🔒 Security Implementation
 1.  **Data Transmission**: All API requests routed via proper HTTP methods.
@@ -96,7 +96,8 @@ The system is fully deployed on the AWS Cloud ecosystem:
 ### Prerequisites
 -   Node.js (v18+)
 -   MySQL Server
--   AWS Account (for S3/SES features)
+-   AWS Learner Lab Account (for S3/EC2/RDS)
+-   Mailgun Account (for Email SMTP)
 
 ### 1. Clone & Install
 ```bash
@@ -117,10 +118,17 @@ DB_USER=root
 DB_PASSWORD=yourpassword
 DB_NAME=booking_system
 JWT_SECRET=your_secret_key
-AWS_ACCESS_KEY_ID=your_key
-AWS_SECRET_ACCESS_KEY=your_secret
+# AWS Credentials (Temporary from Learner Lab)
+AWS_ACCESS_KEY_ID=ASIA...
+AWS_SECRET_ACCESS_KEY=...
+AWS_SESSION_TOKEN=IQoJ...
 AWS_REGION=us-east-1
 S3_BUCKET_NAME=your_bucket
+# Mailgun SMTP
+SMTP_HOST=smtp.mailgun.org
+SMTP_PORT=587
+SMTP_USER=postmaster@sandbox...
+SMTP_PASS=your_mailgun_password
 ```
 Run Database Migration:
 ```bash
