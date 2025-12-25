@@ -10,14 +10,16 @@ const { validateRegister, validateLogin } = require('../middleware/validation');
 // @route   POST /api/auth/register-init
 // @desc    Initiate registration (Send OTP)
 // @access  Public
-router.post('/register-init', validateRegister, async (req, res) => {
+router.post('/register-init', async (req, res) => {
     const { email } = req.body;
+    if (!email) {
+        return res.status(400).json({ message: 'Please enter an email' });
+    }
+
     try {
         const pool = require('../config/database');
 
         // Check if user exists
-        // Note: User.findByEmail might not use pool directly if it's an AR model, let's use direct SQL to be safe based on recent patterns
-        // actually User.findByEmail is static method. Let's use direct SQL for consistency with new code
         const [existing] = await pool.execute('SELECT id FROM users WHERE email = ?', [email]);
         if (existing.length > 0) {
             return res.status(400).json({ message: 'User already exists' });
@@ -47,7 +49,7 @@ router.post('/register-init', validateRegister, async (req, res) => {
 // @route   POST /api/auth/register-verify
 // @desc    Verify OTP and Create User
 // @access  Public
-router.post('/register-verify', async (req, res) => {
+router.post('/register-verify', validateRegister, async (req, res) => {
     const { name, email, password, role, otp } = req.body;
 
     try {

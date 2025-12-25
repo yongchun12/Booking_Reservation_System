@@ -354,30 +354,23 @@ sudo systemctl restart nginx
 
 ---
 
-## Step 7: Configuring Email (AWS SES)
+## Step 7: Configuring Email (Mailgun SMTP)
 
-To enable "Forgot Password" and "OTP Registration" features, you must configure AWS Simple Email Service (SES).
+Due to AWS Sandbox restrictions, we are using **Mailgun SMTP** for reliable email delivery.
 
-### Important: Sandbox Mode
-In the AWS Academy/Free Tier environment, your SES account is in **"Sandbox Mode"**.
-This has two critical restrictions:
-1.  You can only send email **FROM** verified addresses.
-2.  You can only send email **TO** verified addresses.
+### Configuration
+The system is already configured to use your Mailgun Sandbox credentials.
 
-### How to Verify an Email Address
-You do **NOT** need to buy a domain. You can verify your personal email (Gmail, Hotmail, etc.).
+1.  **Authorized Recipients**: Since this is a Sandbox domain, you must go to your [Mailgun Dashboard](https://app.mailgun.com/) -> **Sending** -> **Domains** -> (Select Domain) -> **Authorized Recipients**.
+2.  **Add Emails**: Manually add the email addresses of anyone you want to test with (e.g., yourself, your lecturer).
+3.  **Sending**: The system will send emails via `postmaster@sandbox...`.
 
-1.  Go to the **Amazon SES** Console.
-    -   Search for "SES" or "Simple Email Service".
-2.  In the sidebar, click **Verified identities**.
-3.  Click the orange **Create identity** button.
-4.  **Identity type**: Select **Email address** (Do NOT select Domain).
-5.  **Email address**: Enter your email (e.g., `yongchun_sam@hotmail.com` or your student email).
-6.  Click **Create identity**.
-7.  Check your email inbox. You will receive a verification link from AWS. Click it.
-8.  **Status**: The status in the console should change to "Verified".
+### Fallback (Console Mode)
+If you try to send an email to an **Unauthorized Recipient**, Mailgun will block it.
+**Don't Worry!** The system will automatically catch this error and **print the OTP code to the server console**.
 
-### Testing
-Once verified:
--   **Sender**: The system will automatically use this email as the sender (configured in `backend/utils/emailService.js` or `SES_SENDER_EMAIL` env var).
--   **Receiver**: You can now Register/Forgot Password using THIS SAME email address to test functionality.
+To see the code, run:
+```bash
+ssh -i booking-key.pem ubuntu@<EC2-IP> "pm2 logs booking-api --lines 50 --nostream"
+```
+Look for `MOCK EMAIL TO:` and `OTP CODE:` in the logs.
