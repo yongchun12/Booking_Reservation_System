@@ -130,6 +130,46 @@ router.post('/', [auth, validateBooking], async (req, res) => {
     }
 });
 
+// @route   PUT /api/bookings/:id
+// @desc    Update a booking (Reschedule / Edit)
+// @access  Private
+router.put('/:id', [auth, validateBooking], async (req, res) => {
+    const { resource_id, booking_date, start_time, end_time, notes } = req.body;
+    const bookingId = req.params.id;
+
+    try {
+        const booking = await Booking.findById(bookingId);
+        if (!booking) return res.status(404).json({ message: 'Booking not found' });
+
+        // Check ownership
+        if (booking.user_id !== req.user.id && req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Access denied' });
+        }
+
+        // Check availability (exclude self)
+        const isAvailable = await Booking.checkAvailability(resource_id, booking_date, start_time, end_time, bookingId);
+        if (!isAvailable) {
+            return res.status(400).json({ message: 'Resource is not available at this time' });
+        }
+
+        // Perform Update
+        const pool = require('../config/database');
+        await pool.execute(
+            `UPDATE bookings 
+             SET resource_id = ?, booking_date = ?, start_time = ?, end_time = ?, notes = ? 
+             WHERE id = ?`,
+            [resource_id, booking_date, start_time, end_time, notes, bookingId]
+        );
+
+        const updatedBooking = await Booking.findById(bookingId);
+        res.json(updatedBooking);
+
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server error');
+    }
+});
+
 // @route   DELETE /api/bookings/:id
 // @desc    Cancel booking
 // @access  Private

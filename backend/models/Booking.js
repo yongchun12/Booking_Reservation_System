@@ -65,18 +65,24 @@ class Booking {
         return rows;
     }
 
-    static async checkAvailability(resourceId, date, startTime, endTime) {
+    static async checkAvailability(resourceId, date, startTime, endTime, excludeBookingId = null) {
         // Simple overlap check
-        const [rows] = await pool.execute(
-            `SELECT * FROM bookings 
+        let sql = `SELECT * FROM bookings 
              WHERE resource_id = ? 
              AND booking_date = ? 
              AND status != 'cancelled'
              AND (
                 (start_time < ? AND end_time > ?)
-             )`,
-            [resourceId, date, endTime, startTime]
-        );
+             )`;
+
+        const params = [resourceId, date, endTime, startTime];
+
+        if (excludeBookingId) {
+            sql += ` AND id != ?`;
+            params.push(excludeBookingId);
+        }
+
+        const [rows] = await pool.execute(sql, params);
         return rows.length === 0; // True if no overlapping bookings
     }
 }

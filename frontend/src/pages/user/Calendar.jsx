@@ -12,7 +12,10 @@ import { Label } from '../../components/ui/label';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'sonner';
-import { cn } from '../../lib/utils'; // Add util import
+import { cn } from '../../lib/utils';
+import { DatePicker } from '../../components/ui/date-picker';
+import { TimeSelect } from '../../components/ui/time-select';
+import { format } from 'date-fns';
 
 export default function Calendar() {
     const [events, setEvents] = useState([]);
@@ -49,18 +52,31 @@ export default function Calendar() {
         try {
             const res = await api.get('/bookings');
             // Transform API data to FullCalendar format
-            const calendarEvents = res.data.map(booking => ({
-                id: booking.id,
-                title: booking.notes || booking.resource_name || 'Booking',
-                start: `${booking.booking_date.split('T')[0]}T${booking.start_time}`,
-                end: `${booking.booking_date.split('T')[0]}T${booking.end_time}`,
-                backgroundColor: booking.status === 'confirmed' ? '#10b981' : '#6366f1',
-                extendedProps: {
-                    ...booking,
-                    // If 'attendees' is missing, default to empty
-                    attendees: booking.attendees || []
+            const calendarEvents = res.data.map(booking => {
+                // Safe date string extraction
+                let dateStr;
+                if (booking.booking_date) {
+                    dateStr = booking.booking_date.toString().includes('T')
+                        ? booking.booking_date.toString().split('T')[0]
+                        : booking.booking_date.toString();
+                } else {
+                    return null; // Skip invalid
                 }
-            }));
+
+                return {
+                    id: booking.id,
+                    title: booking.notes || booking.resource_name || 'Booking',
+                    start: `${dateStr}T${booking.start_time}`,
+                    end: `${dateStr}T${booking.end_time}`,
+                    backgroundColor: booking.status === 'confirmed' ? '#10b981' : '#6366f1',
+                    extendedProps: {
+                        ...booking,
+                        user_id: booking.user_id, // Ensure user_id is present
+                        is_owner: booking.user_id === user?.id,
+                        attendees: booking.attendees || []
+                    }
+                };
+            }).filter(Boolean);
             setEvents(calendarEvents);
         } catch (err) {
             console.error("Failed to fetch bookings", err);
@@ -68,33 +84,50 @@ export default function Calendar() {
     };
 
     const handleDateSelect = (selectInfo) => {
-        setSelectedDate(selectInfo);
+        // FullCalendar returns ISO string "YYYY-MM-DD"
+        // Adjust for timezone offset if necessary, but usually raw string is fine for date-picker
+
+        // We need to parse this into a Date object for DatePicker, or keep as string
+        // DatePicker expects a Date object
+        const d = new Date(selectInfo.startStr);
+
+        setSelectedDate({ startStr: selectInfo.startStr }); // Keep for internal logic if needed
+        // But mainly we need to set a state that DatePicker reads.
+        // Let's create a 'formDate' state separate from 'selectedDate' object to simplify
+        // Actually let's just use 'selectedDate' as the Date object itself.
+
+        // REFACTOR: simplify state.
+        // selectedDate will now be a Date object.
+        setSelectedDate(d);
+
         setNewEventTitle('');
         // Extract time from selection
         const startStr = selectInfo.startStr.includes('T') ? selectInfo.startStr.split('T')[1].substring(0, 5) : '09:00';
         const endStr = selectInfo.endStr.includes('T') ? selectInfo.endStr.split('T')[1].substring(0, 5) : '10:00';
-        setTimeRange({ start: startStr, end: endStr });
+
+        // If it's an all-day click (month view), defaults to 09:00-10:00
+        setTimeRange({ start: startStr === '00:00' ? '09:00' : startStr, end: endStr === '00:00' ? '10:00' : endStr });
 
         setSelectedEvent(null);
+        // Also reset delete modal state just in case
+        setDeleteModalOpen(false);
         setShowModal(true);
     };
 
     const handleEventClick = (clickInfo) => {
-        setSelectedEvent(clickInfo.event);
-        setNewEventTitle(clickInfo.event.title);
+        const e = clickInfo.event;
+        setSelectedEvent(e);
+        setNewEventTitle(e.title);
 
         // Populate times
-        const e = clickInfo.event;
         const startStr = e.start.toTimeString().substring(0, 5);
         const endStr = e.end ? e.end.toTimeString().substring(0, 5) : startStr;
         setTimeRange({ start: startStr, end: endStr });
 
-        // Mock setting date object for update logic
-        setSelectedDate({
-            startStr: e.start.toISOString(),
-            endStr: e.end ? e.end.toISOString() : e.start.toISOString()
-        });
+        // Set Date object
+        setSelectedDate(e.start);
 
+        setDeleteModalOpen(false);
         setShowModal(true);
     };
 
@@ -104,36 +137,27 @@ export default function Calendar() {
         // Simplified booking creation
         const payload = {
             resource_id: 1, // Defaulting to 1 for calendar quick-add
-            booking_date: selectedDate.startStr.split('T')[0],
+            booking_date: format(selectedDate, 'yyyy-MM-dd'),
             start_time: timeRange.start, // HH:MM from input
             end_time: timeRange.end,     // HH:MM from input
             notes: newEventTitle
         };
 
-        // If editing existing event, we might need PUT endpoint. 
-        // Currently we only have POST /bookings (Create). 
-        // Checking if "Edit" is supported by backend...
-        // Assuming we are just creating new for now OR implementing PUT /bookings/:id later.
-        // For now, if selectedEvent exists, we probably want to Delete + Create (Swap) or Update.
-        // Let's use Delete + Create for "Update" if backend doesn't support PUT booking details yet.
-        // Or just post new for create.
-
         try {
             if (selectedEvent) {
-                // If it's an update, technically we should `api.put`. But we don't have that route yet.
-                // Fallback: Alert user or just create new.
-                // Let's create a new one for now or add PUT route.
-                // Given the instructions ("Better add calendar that cna update time"), implied update.
-                // I'll add PUT logic to backend plan if needed. For now let's just create.
-                // Wait, user wants to UPDATE time. 
+                // Reschedule / Update
+                await api.put(`/bookings/${selectedEvent.id}`, payload);
+                toast.success("Event updated");
+            } else {
+                // Create new
+                await api.post('/bookings', payload);
+                toast.success("Event created");
             }
 
-            await api.post('/bookings', payload);
             await fetchEvents();
             setShowModal(false);
-            toast.success("Event saved");
         } catch (err) {
-            toast.error(err.response?.data?.message || "Booking failed");
+            toast.error(err.response?.data?.message || "Operation failed");
         }
     };
 
@@ -218,23 +242,29 @@ export default function Calendar() {
                         />
                     </div>
 
+                    <div className="space-y-2">
+                        <Label>Date</Label>
+                        <DatePicker
+                            date={selectedDate}
+                            setDate={setSelectedDate}
+                        />
+                    </div>
+
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="startTime">Start Time</Label>
-                            <Input
-                                id="startTime"
-                                type="time"
+                            <TimeSelect
                                 value={timeRange.start}
-                                onChange={(e) => setTimeRange({ ...timeRange, start: e.target.value })}
+                                onChange={(v) => setTimeRange({ ...timeRange, start: v })}
+                                className="w-full"
                             />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="endTime">End Time</Label>
-                            <Input
-                                id="endTime"
-                                type="time"
+                            <TimeSelect
                                 value={timeRange.end}
-                                onChange={(e) => setTimeRange({ ...timeRange, end: e.target.value })}
+                                onChange={(v) => setTimeRange({ ...timeRange, end: v })}
+                                className="w-full"
                             />
                         </div>
                     </div>
@@ -275,7 +305,7 @@ export default function Calendar() {
                     </div>
 
                     <div className="flex justify-end gap-2 pt-4 border-t mt-4">
-                        {selectedEvent?.extendedProps?.is_owner && (
+                        {selectedEvent?.extendedProps?.is_owner && selectedEvent?.extendedProps?.status !== 'cancelled' && (
                             <Button variant="destructive" onClick={handleDeleteClick}>
                                 Cancel Booking
                             </Button>
@@ -283,9 +313,9 @@ export default function Calendar() {
                         <Button variant="outline" onClick={() => setShowModal(false)}>
                             Close
                         </Button>
-                        {!selectedEvent && (
+                        {(!selectedEvent || (selectedEvent.extendedProps?.is_owner && selectedEvent.extendedProps?.status !== 'cancelled')) && (
                             <Button onClick={handleSaveEvent}>
-                                Create
+                                {selectedEvent ? 'Update Event' : 'Create Booking'}
                             </Button>
                         )}
                     </div>
