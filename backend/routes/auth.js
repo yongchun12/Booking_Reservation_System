@@ -183,6 +183,11 @@ router.post('/login', validateLogin, async (req, res) => {
             return res.status(400).json({ message: 'Invalid Credentials' });
         }
 
+        // Check if user is active
+        if (user.is_active === 0 || user.is_active === false) {
+            return res.status(403).json({ message: 'Account disabled. Please contact admin.' });
+        }
+
         // Check password
         const isMatch = await bcrypt.compare(password, user.password_hash);
         if (!isMatch) {
@@ -250,9 +255,11 @@ router.put('/update-details', [auth, upload.single('profilePicture')], async (re
             values.push(name);
         }
 
-        if (req.file) {
+        if (req.file && req.file.location) {
             fields.push('profile_picture = ?');
             values.push(req.file.location);
+        } else if (req.file && !req.file.location) {
+            console.warn("File uploaded but no location found (S3 S3 Credentials likely missing). Skipping picture update.");
         }
 
         if (fields.length > 0) {

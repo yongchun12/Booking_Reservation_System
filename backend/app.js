@@ -24,6 +24,26 @@ app.get('/', (req, res) => {
     res.json({ message: 'Booking System API is running' });
 });
 
+// Health check endpoint for AWS Load Balancer or Monitoring
+app.get('/health', (req, res) => {
+    res.status(200).send('OK');
+});
+
+// Detailed system status (Protected could be better, but public basic info is okay)
+app.get('/api/monitor', (req, res) => {
+    const usage = process.memoryUsage();
+    res.json({
+        status: 'UP',
+        timestamp: new Date(),
+        uptime: process.uptime(),
+        memory: {
+            rss: `${Math.round(usage.rss / 1024 / 1024)} MB`,
+            heapTotal: `${Math.round(usage.heapTotal / 1024 / 1024)} MB`,
+            heapUsed: `${Math.round(usage.heapUsed / 1024 / 1024)} MB`,
+        }
+    });
+});
+
 // Import Routes
 const authRoutes = require('./routes/auth');
 const resourceRoutes = require('./routes/resources');

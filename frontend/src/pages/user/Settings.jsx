@@ -10,7 +10,7 @@ import { Loader2, Upload, User } from 'lucide-react';
 import { getProxiedImageUrl } from '../../lib/image-utils';
 
 export default function Settings() {
-    const { user } = useAuth();
+    const { user, refreshUser } = useAuth();
     const [loading, setLoading] = useState(false);
 
     // Profile State
@@ -58,7 +58,7 @@ export default function Settings() {
             });
 
             toast.success("Profile updated successfully!");
-            // Ideally reload user context here
+            await refreshUser();
         } catch (err) {
             console.error(err);
             toast.error(err.response?.data?.message || "Failed to update profile.");

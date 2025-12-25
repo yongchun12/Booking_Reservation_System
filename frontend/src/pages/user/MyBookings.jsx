@@ -69,6 +69,18 @@ export default function MyBookings() {
         }
     };
 
+    const handleRSVP = async (bookingId, status) => {
+        try {
+            await api.put(`/bookings/${bookingId}/rsvp`, { status });
+            // Optimistic Update
+            setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, my_rsvp_status: status } : b));
+            toast.success(`Invitation ${status}`);
+        } catch (error) {
+            console.error("RSVP Error", error);
+            toast.error("Failed to update RSVP");
+        }
+    };
+
     // Helper to generate ICS file content
     const generateICS = (booking, startDateTime, endDateTime) => {
         if (!startDateTime || !endDateTime) return;
@@ -231,12 +243,40 @@ export default function MyBookings() {
                                                 <Button variant="outline" size="sm" onClick={() => generateICS(booking, startDateTime, endDateTime)}>
                                                     ICS
                                                 </Button>
-                                                <Button variant="outline" size="sm" onClick={() => handleReschedule(booking)}>
-                                                    Reschedule
-                                                </Button>
-                                                <Button variant="destructive" size="sm" onClick={() => handleCancelClick(booking)}>
-                                                    Cancel
-                                                </Button>
+
+                                                {/* Owner Actions */}
+                                                {booking.is_owner && (
+                                                    <>
+                                                        <Button variant="outline" size="sm" onClick={() => handleReschedule(booking)}>
+                                                            Reschedule
+                                                        </Button>
+                                                        <Button variant="destructive" size="sm" onClick={() => handleCancelClick(booking)}>
+                                                            Cancel
+                                                        </Button>
+                                                    </>
+                                                )}
+
+                                                {/* Attendee Actions */}
+                                                {!booking.is_owner && (
+                                                    <>
+                                                        <Button
+                                                            variant={booking.my_rsvp_status === 'accepted' ? "secondary" : "outline"}
+                                                            size="sm"
+                                                            className={booking.my_rsvp_status === 'accepted' ? "bg-green-100 text-green-700 hover:bg-green-200" : "hover:bg-green-50 text-green-600"}
+                                                            onClick={() => handleRSVP(booking.id, 'accepted')}
+                                                        >
+                                                            Accept
+                                                        </Button>
+                                                        <Button
+                                                            variant={booking.my_rsvp_status === 'declined' ? "secondary" : "outline"}
+                                                            size="sm"
+                                                            className={booking.my_rsvp_status === 'declined' ? "bg-red-100 text-red-700 hover:bg-red-200" : "hover:bg-red-50 text-red-600"}
+                                                            onClick={() => handleRSVP(booking.id, 'declined')}
+                                                        >
+                                                            Decline
+                                                        </Button>
+                                                    </>
+                                                )}
                                             </>
                                         )}
                                         {activeTab === 'past' && (

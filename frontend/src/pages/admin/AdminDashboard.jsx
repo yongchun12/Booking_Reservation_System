@@ -117,6 +117,17 @@ export default function AdminDashboard() {
                                 </PieChart>
                             </ResponsiveContainer>
                         </div>
+                        <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+                            {utilization.map((entry, index) => (
+                                <div key={index} className="flex items-center gap-2">
+                                    <div
+                                        className="w-3 h-3 rounded-full"
+                                        style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                                    />
+                                    <span className="truncate" title={entry.name}>{entry.name}: {entry.value}</span>
+                                </div>
+                            ))}
+                        </div>
                     </CardContent>
                 </Card>
             </div>

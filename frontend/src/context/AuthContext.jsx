@@ -7,23 +7,24 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    // Check for token on mount
-    useEffect(() => {
-        const checkAuth = async () => {
-            const token = localStorage.getItem('token');
-            if (token) {
-                try {
-                    const res = await api.get('/auth/me');
-                    setUser(res.data.user);
-                } catch (err) {
-                    console.error("Auth check failed", err);
-                    if (err.response && err.response.status === 401) {
-                        localStorage.removeItem('token');
-                    }
+    const checkAuth = async () => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            try {
+                const res = await api.get('/auth/me');
+                setUser(res.data.user);
+            } catch (err) {
+                console.error("Auth check failed", err);
+                if (err.response && err.response.status === 401) {
+                    localStorage.removeItem('token');
                 }
             }
-            setLoading(false);
-        };
+        }
+        setLoading(false);
+    };
+
+    // Check for token on mount
+    useEffect(() => {
         checkAuth();
     }, []);
 
@@ -50,7 +51,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+        <AuthContext.Provider value={{ user, login, register, logout, loading, refreshUser: checkAuth }}>
             {!loading && children}
         </AuthContext.Provider>
     );

@@ -17,7 +17,7 @@ export default function UserManagement() {
     const { user: currentUser } = useAuth();
 
     // Delete Modal
-    const [deleteModal, setDeleteModal] = useState({ open: false, id: null });
+    const [deleteModal, setDeleteModal] = useState({ open: false, user: null });
 
     // Add User Modal
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -60,11 +60,16 @@ export default function UserManagement() {
     };
 
     const handleDeleteUser = async () => {
-        if (!deleteModal.id) return;
+        const user = deleteModal.user;
+        if (!user) return;
+
+        const isPermanent = !user.is_active;
+        const url = isPermanent ? `/users/${user.id}?permanent=true` : `/users/${user.id}`;
+
         try {
-            await api.delete(`/users/${deleteModal.id}`);
-            toast.success("User deleted successfully");
-            setDeleteModal({ open: false, id: null });
+            await api.delete(url);
+            toast.success(isPermanent ? "User permanently deleted" : "User deactivated successfully");
+            setDeleteModal({ open: false, user: null });
             fetchUsers();
         } catch (error) {
             toast.error(error.response?.data?.message || "Failed to delete user");
@@ -137,7 +142,16 @@ export default function UserManagement() {
                                             {user.role}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4">{user.created_at ? new Date(user.created_at).toLocaleDateString() : '-'}</td>
+                                    <td className="px-6 py-4">
+                                        <div className="flex flex-col gap-1">
+                                            {user.created_at ? new Date(user.created_at).toLocaleDateString() : '-'}
+                                            {!user.is_active && (
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 w-fit">
+                                                    Inactive
+                                                </span>
+                                            )}
+                                        </div>
+                                    </td>
                                     <td className="px-6 py-4 text-right flex justify-end gap-2">
                                         <Button
                                             variant="ghost"
@@ -151,9 +165,10 @@ export default function UserManagement() {
                                         <Button
                                             variant="ghost"
                                             size="icon"
-                                            className="text-destructive hover:text-destructive"
-                                            onClick={() => setDeleteModal({ open: true, id: user.id })}
+                                            className={user.is_active ? "text-destructive hover:text-destructive" : "text-red-800 hover:text-red-900"}
+                                            onClick={() => setDeleteModal({ open: true, user: user })}
                                             disabled={currentUser?.id === user.id}
+                                            title={!user.is_active ? "Permanently Delete User" : "Deactivate User"}
                                         >
                                             <Trash className="h-4 w-4" />
                                         </Button>
@@ -167,10 +182,13 @@ export default function UserManagement() {
 
             <ConfirmModal
                 isOpen={deleteModal.open}
-                onClose={() => setDeleteModal({ open: false, id: null })}
+                onClose={() => setDeleteModal({ open: false, user: null })}
                 onConfirm={handleDeleteUser}
-                title="Delete User"
-                description="Are you sure you want to delete this user? This action cannot be undone."
+                title={deleteModal.user?.is_active ? "Deactivate User" : "Permanently Delete User"}
+                description={deleteModal.user?.is_active
+                    ? "Are you sure you want to deactivate this user? They will no longer be able to login, but their records will be preserved."
+                    : "WARNING: This will PERMANENTLY delete the user and ALL their bookings. This action cannot be undone."
+                }
             />
 
             <Modal

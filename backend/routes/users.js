@@ -76,7 +76,7 @@ router.put('/:id', [auth, adminAuth], async (req, res) => {
 router.get('/', auth, async (req, res) => {
     try {
         // Return necessary info. Admin needs role/created_at using this same endpoint for now.
-        const [users] = await db.query('SELECT id, name, email, role, created_at, profile_picture FROM users ORDER BY name ASC');
+        const [users] = await db.query('SELECT id, name, email, role, created_at, profile_picture, is_active FROM users ORDER BY name ASC');
         res.json(users);
     } catch (err) {
         console.error(err.message);
@@ -93,11 +93,39 @@ router.delete('/:id', [auth, adminAuth], async (req, res) => {
             return res.status(400).json({ message: "Cannot delete yourself" });
         }
         const pool = require('../config/database');
-        await pool.execute('DELETE FROM users WHERE id = ?', [req.params.id]);
-        res.json({ message: 'User deleted successfully' });
+
+        // 0. Delete email verifications/OTP
+        await pool.execute('DELETE FROM email_verifications WHERE email = (SELECT email FROM users WHERE id = ?)', [req.params.id]);
+
+        if (req.query.permanent === 'true') {
+            // HARD DELETE
+            // 1. Delete their attendance in other bookings
+            await pool.execute('DELETE FROM booking_attendees WHERE user_id = ?', [req.params.id]);
+
+            // 2. Find bookings owned by this user
+            const [userBookings] = await pool.execute('SELECT id FROM bookings WHERE user_id = ?', [req.params.id]);
+
+            // 3. Delete attendees for those bookings (if any)
+            if (userBookings.length > 0) {
+                const bookingIds = userBookings.map(b => b.id);
+                const placeholders = bookingIds.map(() => '?').join(',');
+                await pool.execute(`DELETE FROM booking_attendees WHERE booking_id IN (${placeholders})`, bookingIds);
+
+                // 4. Delete the bookings themselves
+                await pool.execute(`DELETE FROM bookings WHERE user_id = ?`, [req.params.id]);
+            }
+
+            // 5. Delete the user
+            await pool.execute('DELETE FROM users WHERE id = ?', [req.params.id]);
+            res.json({ message: 'User permanently deleted' });
+        } else {
+            // SOFT DELETE: Deactivate user instead of deleting
+            await pool.execute('UPDATE users SET is_active = 0 WHERE id = ?', [req.params.id]);
+            res.json({ message: 'User deactivated successfully' });
+        }
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ message: 'Server error: ' + err.message });
     }
 });
 

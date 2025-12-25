@@ -14,7 +14,6 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
         { name: 'Calendar', href: '/calendar', icon: Calendar },
         { name: 'Resources', href: '/resources', icon: Package },
         { name: 'My Bookings', href: '/my-bookings', icon: Calendar },
-        { name: 'Settings', href: '/settings', icon: Settings },
     ];
 
     if (user?.role === 'admin') {
@@ -72,36 +71,6 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
                     </nav>
                 </div>
 
-                {/* User Info */}
-                <div className="mt-auto px-4 pb-4">
-                    <div className="flex items-center gap-3 rounded-lg border p-3 bg-muted/30">
-                        <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-background border flex items-center justify-center">
-                            {user?.profile_picture ? (
-                                <img src={getProxiedImageUrl(user.profile_picture)} alt={user.name} className="h-full w-full object-cover" />
-                            ) : (
-                                <span className="font-semibold text-muted-foreground">
-                                    {user?.name?.charAt(0).toUpperCase() || 'U'}
-                                </span>
-                            )}
-                        </div>
-                        <div className="flex-1 overflow-hidden">
-                            <p className="truncate text-sm font-medium">{user?.name || 'User'}</p>
-                            <p className="truncate text-xs text-muted-foreground">{user?.email || 'email'}</p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Footer */}
-                <div className="border-t p-4">
-                    <Button
-                        variant="ghost"
-                        onClick={logout}
-                        className="w-full justify-start gap-3 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                    >
-                        <LogOut className="h-5 w-5" />
-                        Log Out
-                    </Button>
-                </div>
             </div>
         </>
     );

@@ -59,6 +59,57 @@ async function sendOTP(toEmail, otp, type = 'register') {
         // Return TRUE so the frontend thinks it succeeded
         return true;
     }
+    // ... exists ...
+}
 }
 
-module.exports = { sendOTP };
+/**
+ * Send Invitation Email
+ */
+async function sendInvitation(toEmail, bookingDetails) {
+    const subject = `Invited: ${bookingDetails.title} @ ${bookingDetails.date}`;
+    const htmlBody = `
+        <div style="font-family: Arial, sans-serif; padding: 20px;">
+            <h2>You have been invited!</h2>
+            <p><strong>Event:</strong> ${bookingDetails.title}</p>
+            <p><strong>When:</strong> ${bookingDetails.date} from ${bookingDetails.start} to ${bookingDetails.end}</p>
+            <p><strong>Where:</strong> ${bookingDetails.resource}</p>
+            <p>Please log in to the portal to RSVP.</p>
+        </div>
+    `;
+    return sendEmail(toEmail, subject, htmlBody);
+}
+
+/**
+ * Send RSVP Notification to Owner
+ */
+async function sendRSVPNotification(ownerEmail, attendeeName, status, bookingTitle) {
+    const subject = `RSVP Update: ${attendeeName} ${status} your event`;
+    const color = status === 'accepted' ? 'green' : 'red';
+    const htmlBody = `
+        <div style="font-family: Arial, sans-serif; padding: 20px;">
+            <h2>RSVP Alert</h2>
+            <p>${attendeeName} has <strong style="color: ${color}">${status}</strong> your invitation for <strong>${bookingTitle}</strong>.</p>
+        </div>
+    `;
+    return sendEmail(ownerEmail, subject, htmlBody);
+}
+
+// Helper to wrap transporter
+async function sendEmail(to, subject, html) {
+    try {
+        await transporter.sendMail({
+            from: '"Booking System" <postmaster@sandbox58f5c26ea33b441e890efaf90ebc9e19.mailgun.org>',
+            to,
+            subject,
+            html,
+        });
+        console.log(`✅ Email sent to ${to}`);
+        return true;
+    } catch (error) {
+        console.error("❌ Email Failed:", error.message);
+        return false;
+    }
+}
+
+module.exports = { sendOTP, sendInvitation, sendRSVPNotification };

@@ -123,6 +123,35 @@ router.post('/', [auth, validateBooking], async (req, res) => {
         }
 
         const newBooking = await Booking.findById(bookingId);
+
+        // Send Email Invitations
+        if (req.body.attendee_ids && Array.isArray(req.body.attendee_ids) && req.body.attendee_ids.length > 0) {
+            const { sendInvitation } = require('../utils/emailService');
+            const pool = require('../config/database');
+
+            // Fetch Resource Name
+            const [rRows] = await pool.execute('SELECT name FROM resources WHERE id = ?', [resource_id]);
+            const resourceName = rRows[0]?.name || 'Unknown Resource';
+
+            // Fetch Attendee Emails
+            // Using IN clause properly with mysql2
+            const placeholder = req.body.attendee_ids.map(() => '?').join(',');
+            const [users] = await pool.execute(`SELECT email, name FROM users WHERE id IN (${placeholder})`, req.body.attendee_ids);
+
+            const bookingDetails = {
+                title: notes || 'New Booking',
+                date: booking_date,
+                start: start_time,
+                end: end_time,
+                resource: resourceName
+            };
+
+            // Send async (don't block response)
+            users.forEach(u => {
+                sendInvitation(u.email, bookingDetails).catch(e => console.error("Email fail:", e));
+            });
+        }
+
         res.status(201).json(newBooking);
     } catch (err) {
         console.error(err.message);
@@ -251,6 +280,26 @@ router.put('/:id/rsvp', auth, async (req, res) => {
         }
 
         await Booking.updateAttendeeStatus(req.params.id, req.user.id, status);
+
+        // Notify Owner
+        const { sendRSVPNotification } = require('../utils/emailService');
+
+        // Fetch Booking Owner & Details
+        const [bookingRows] = await pool.execute(
+            `SELECT b.notes, u.email as owner_email 
+             FROM bookings b 
+             JOIN users u ON b.user_id = u.id 
+             WHERE b.id = ?`,
+            [req.params.id]
+        );
+
+        if (bookingRows.length > 0) {
+            const { notes, owner_email } = bookingRows[0];
+            // Don't await email to keep UI fast
+            sendRSVPNotification(owner_email, req.user.name || 'An attendee', status, notes || 'Booking')
+                .catch(e => console.error("RSVP Email fail:", e));
+        }
+
         res.json({ message: `Booking ${status}` });
     } catch (err) {
         console.error(err.message);
