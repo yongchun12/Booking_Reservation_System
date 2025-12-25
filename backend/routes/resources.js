@@ -41,7 +41,11 @@ router.post('/', [auth, adminAuth, upload.single('image')], async (req, res) => 
 
         let imageUrl = null;
         if (req.file) {
-            imageUrl = req.file.location;
+            if (req.file.location) {
+                imageUrl = req.file.location;
+            } else if (req.file.filename) {
+                imageUrl = `/api/uploads/${req.file.filename}`;
+            }
         }
 
         const [result] = await db.query(
@@ -66,6 +70,10 @@ router.put('/:id', [auth, adminAuth, upload.single('image')], async (req, res) =
         let updateFields = [];
         let updateValues = [];
 
+        console.log("DEBUG: Hit PUT /resources/:id", req.params.id);
+        console.log("DEBUG: req.body:", req.body);
+        console.log("DEBUG: req.file:", req.file);
+
         if (name) { updateFields.push('name = ?'); updateValues.push(name); }
         if (type) { updateFields.push('type = ?'); updateValues.push(type); }
         if (capacity) { updateFields.push('capacity = ?'); updateValues.push(capacity); }
@@ -73,20 +81,36 @@ router.put('/:id', [auth, adminAuth, upload.single('image')], async (req, res) =
         if (location) { updateFields.push('location = ?'); updateValues.push(location); }
 
         if (req.file) {
-            updateFields.push('image_url = ?');
-            updateValues.push(req.file.location);
+            let fileUrl = req.file.location;
+            console.log("DEBUG: Initial fileUrl (S3):", fileUrl);
+
+            if (!fileUrl && req.file.filename) {
+                fileUrl = `/api/uploads/${req.file.filename}`;
+                console.log("DEBUG: Generated Local URL:", fileUrl);
+            }
+
+            if (fileUrl) {
+                updateFields.push('image_url = ?');
+                updateValues.push(fileUrl);
+            } else {
+                console.log("DEBUG: fileUrl is empty after checks!");
+            }
         }
 
+        console.log("DEBUG: Final updateFields:", updateFields);
+        console.log("DEBUG: Final updateValues:", updateValues);
+
         if (updateFields.length === 0) {
+            console.log("DEBUG: No fields to update, returning 400");
             return res.status(400).json({ message: "No fields to update" });
         }
 
         updateValues.push(req.params.id);
 
-        await db.query(
-            `UPDATE resources SET ${updateFields.join(', ')} WHERE id = ?`,
-            updateValues
-        );
+        const sql = `UPDATE resources SET ${updateFields.join(', ')} WHERE id = ?`;
+        console.log("DEBUG: Executing SQL:", sql);
+
+        await db.query(sql, updateValues);
 
         res.json({ message: 'Resource updated successfully' });
     } catch (err) {

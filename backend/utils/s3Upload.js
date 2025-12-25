@@ -28,10 +28,29 @@ if (hasS3Creds) {
         }
     });
 } else {
-    // Fallback to memory storage if no S3 creds
-    // This allows requests to pass even if upload won't reach S3
-    console.warn("AWS Credentials missing. File upload will rely on memory storage (Mock).");
-    storage = multer.memoryStorage();
+    // Fallback to local disk storage if no S3 creds
+    const fs = require('fs');
+    const path = require('path');
+
+    const uploadDir = path.join(__dirname, '../uploads');
+    if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
+    console.warn("AWS Credentials missing. Using local storage: " + uploadDir);
+
+    storage = multer.diskStorage({
+        destination: function (req, file, cb) {
+            cb(null, uploadDir);
+        },
+        filename: function (req, file, cb) {
+            const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+            // Sanitize original name
+            const sanitizedName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+            cb(null, uniqueSuffix + '-' + sanitizedName);
+        }
+    });
+
 }
 
 const upload = multer({

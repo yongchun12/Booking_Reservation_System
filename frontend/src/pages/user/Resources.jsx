@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/button';
 import { Users, Loader2 } from 'lucide-react';
 import api from '../../lib/api';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { getProxiedImageUrl } from '../../lib/image-utils';
 
 export default function Resources() {
     const [resources, setResources] = useState([]);
@@ -74,9 +75,16 @@ export default function Resources() {
                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {filteredResources.map((resource) => (
                         <Card key={resource.id} className="overflow-hidden flex flex-col">
-                            <div className="aspect-video w-full overflow-hidden bg-muted flex items-center justify-center">
-                                {/* Placeholder since DB might just have image URL string. Adjust if you really have image upload */}
-                                <span className="text-4xl">🏢</span>
+                            <div className="aspect-video w-full overflow-hidden bg-muted flex items-center justify-center relative">
+                                {resource.image_url ? (
+                                    <img
+                                        src={getProxiedImageUrl(resource.image_url)}
+                                        alt={resource.name}
+                                        className="h-full w-full object-cover transition-transform hover:scale-105"
+                                        onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                                    />
+                                ) : null}
+                                <span className={`text-4xl absolute ${resource.image_url ? 'hidden' : 'flex'}`}>🏢</span>
                             </div>
                             <CardHeader>
                                 <div className="flex items-center justify-between">

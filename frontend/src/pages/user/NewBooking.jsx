@@ -24,6 +24,7 @@ export default function NewBooking() {
     const location = useLocation();
     const [currentStep, setCurrentStep] = useState(1);
     const [loading, setLoading] = useState(false);
+    const [editingId, setEditingId] = useState(null);
 
     const [formData, setFormData] = useState({
         date: '',
@@ -47,6 +48,9 @@ export default function NewBooking() {
     // Handle "Book Again" or redirected state
     useEffect(() => {
         if (location.state) {
+            if (location.state.bookingId) {
+                setEditingId(location.state.bookingId);
+            }
             setFormData(prev => ({
                 ...prev,
                 resource: location.state.resourceId || prev.resource,
@@ -136,15 +140,22 @@ export default function NewBooking() {
     const handleSubmit = async () => {
         setLoading(true);
         try {
-            await api.post('/bookings', {
+            const payload = {
                 resource_id: formData.resource,
                 booking_date: formData.date,
                 start_time: formData.startTime,
                 end_time: formData.endTime,
                 notes: `Booking for ${formData.resourceName}`,
                 attendee_ids: formData.attendees
-            });
-            toast.success("Booking confirmed successfully!");
+            };
+
+            if (editingId) {
+                await api.put(`/bookings/${editingId}`, payload);
+                toast.success("Booking updated successfully!");
+            } else {
+                await api.post('/bookings', payload);
+                toast.success("Booking confirmed successfully!");
+            }
             navigate('/my-bookings');
         } catch (error) {
             console.error(error);
@@ -319,7 +330,7 @@ export default function NewBooking() {
                     ) : (
                         <Button onClick={handleSubmit} disabled={loading}>
                             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Confirm Booking
+                            {editingId ? 'Update Booking' : 'Confirm Booking'}
                         </Button>
                     )}
                 </CardFooter>

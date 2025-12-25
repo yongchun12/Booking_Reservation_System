@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
+import { Textarea } from '../../components/ui/textarea';
 import Modal from '../../components/ui/modal';
 import ConfirmModal from '../../components/ui/confirm-modal';
 import { Plus, Edit, Trash, Loader2, Upload, AlertTriangle, Search } from 'lucide-react';
@@ -99,7 +100,9 @@ function ResourceManagementContent() {
             type: resource.type,
             capacity: resource.capacity || 0,
             location: resource.location || '',
-            image: null // Reset image on edit start
+            description: resource.description || '',
+            image: null,
+            previewUrl: getProxiedImageUrl(resource.image_url) // Store existing URL for preview
         });
         setIsModalOpen(true);
     };
@@ -116,6 +119,7 @@ function ResourceManagementContent() {
             data.append('type', formData.type);
             data.append('capacity', formData.capacity);
             data.append('location', formData.location);
+            data.append('description', formData.description || '');
             if (formData.image instanceof File) {
                 data.append('image', formData.image);
             }
@@ -133,7 +137,7 @@ function ResourceManagementContent() {
             }
 
             setIsModalOpen(false);
-            setFormData({ name: '', type: 'Room', capacity: 0, image: null, location: '' });
+            setFormData({ name: '', type: 'Room', capacity: 0, image: null, location: '', description: '' });
             setEditingId(null);
             fetchResources();
         } catch (error) {
@@ -191,6 +195,7 @@ function ResourceManagementContent() {
                 <table className="w-full text-sm text-left">
                     <thead className="bg-muted text-muted-foreground uppercase text-xs">
                         <tr>
+                            <th className="px-6 py-3">Image</th>
                             <th className="px-6 py-3">Name</th>
                             <th className="px-6 py-3">Type</th>
                             <th className="px-6 py-3">Location</th>
@@ -211,6 +216,13 @@ function ResourceManagementContent() {
                         ) : (
                             filteredResources.map((resource) => (
                                 <tr key={resource.id} className="border-b hover:bg-muted/50 transition-colors">
+                                    <td className="px-6 py-4">
+                                        {resource.image_url ? (
+                                            <img src={getProxiedImageUrl(resource.image_url)} alt="" className="h-10 w-10 rounded-md object-cover" />
+                                        ) : (
+                                            <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center text-xs">No Img</div>
+                                        )}
+                                    </td>
                                     <td className="px-6 py-4 font-medium">{resource.name}</td>
                                     <td className="px-6 py-4">{resource.type}</td>
                                     <td className="px-6 py-4">{resource.location || '-'}</td>
@@ -272,6 +284,14 @@ function ResourceManagementContent() {
                         </select>
                     </div>
                     <div className="space-y-2">
+                        <label className="text-sm font-medium">Description</label>
+                        <Textarea
+                            placeholder="Describe the resource (amenities, view, etc.)"
+                            value={formData.description || ''}
+                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        />
+                    </div>
+                    <div className="space-y-2">
                         <label className="text-sm font-medium">Location</label>
                         <Input
                             placeholder="e.g. Level 1"
@@ -294,6 +314,8 @@ function ResourceManagementContent() {
                             <div className="h-16 w-16 bg-muted rounded-md flex items-center justify-center overflow-hidden border shrink-0">
                                 {formData.image && (formData.image instanceof File || formData.image instanceof Blob) ? (
                                     <img src={URL.createObjectURL(formData.image)} alt="Preview" className="h-full w-full object-cover" />
+                                ) : formData.previewUrl ? (
+                                    <img src={formData.previewUrl} alt="Current" className="h-full w-full object-cover" />
                                 ) : (
                                     <div className="text-xs text-muted-foreground text-center px-1">No Image</div>
                                 )}

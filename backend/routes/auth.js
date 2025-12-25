@@ -255,11 +255,17 @@ router.put('/update-details', [auth, upload.single('profilePicture')], async (re
             values.push(name);
         }
 
-        if (req.file && req.file.location) {
-            fields.push('profile_picture = ?');
-            values.push(req.file.location);
-        } else if (req.file && !req.file.location) {
-            console.warn("File uploaded but no location found (S3 S3 Credentials likely missing). Skipping picture update.");
+        if (req.file) {
+            let fileUrl = req.file.location; // S3
+            if (!fileUrl && req.file.filename) {
+                // Local Fallback
+                fileUrl = `/api/uploads/${req.file.filename}`;
+            }
+
+            if (fileUrl) {
+                fields.push('profile_picture = ?');
+                values.push(fileUrl);
+            }
         }
 
         if (fields.length > 0) {

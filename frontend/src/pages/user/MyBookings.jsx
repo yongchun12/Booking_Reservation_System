@@ -34,10 +34,13 @@ export default function MyBookings() {
         fetchBookings();
     }, []);
 
-    const handleReschedule = (booking) => {
+    const handleReschedule = (booking, isUnmount = false) => {
         // Navigate to NewBooking with pre-filled details
+        // isUnmount (Book Again) -> Create New (No ID)
+        // !isUnmount (Reschedule) -> Update Existing (Pass ID)
         navigate('/new-booking', {
             state: {
+                bookingId: isUnmount ? null : booking.id,
                 resourceId: booking.resource_id,
                 resourceName: booking.resource_name,
                 date: booking.booking_date.split('T')[0],
@@ -284,7 +287,7 @@ export default function MyBookings() {
                                                 variant="secondary"
                                                 size="sm"
                                                 className="w-full"
-                                                onClick={() => handleReschedule(booking)}
+                                                onClick={() => handleReschedule(booking, true)}
                                             >
                                                 Book Again
                                             </Button>

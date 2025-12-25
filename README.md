@@ -1,75 +1,154 @@
-# Cloud-Native Booking & Reservation System
-(CSC3074 Final Assignment)
+# 📅 Booking & Reservation Management System
 
-A complete booking/reservation system built using Node.js (Express), MySQL, and Vanilla JavaScript/Bootstrap. Designed for deployment on AWS.
+> **CSC3074 - Cloud Computing Final Assignment**
+> A scalable, cloud-native web application for managing resource bookings, built with the MERN stack and deployed on AWS.
 
-## Features
-- **User Authentication**: Register, Login, JWT-based auth.
-- **Resource Management**: Admin can create/update resources (Rooms, Equipment).
-- **Booking System**: Users can book resources, view availability on a calendar, and manage their bookings.
-- **File Uploads**: Integration with AWS S3 for uploading attachments to bookings.
-- **Admin Dashboard**: Overview of all resources and bookings.
+---
 
-## Tech Stack
-- **Frontend**: HTML5, Bootstrap 5, Vanilla JS, FullCalendar.js
-- **Backend**: Node.js, Express.js
-- **Database**: MySQL (compatible with AWS RDS)
-- **Cloud Services**: AWS EC2 (Hosting), AWS S3 (Storage), AWS RDS (Database)
+## 📖 Project Overview
 
-## Setup Instructions
+This **Booking & Reservation System** is a comprehensive solution designed to streamline the process of scheduling and managing shared resources (e.g., meeting rooms, sports facilities, equipment). It provides a seamless experience for users to book resources and powerful tools for administrators to manage inventory, users, and reservations.
+
+The system is architected to be **cloud-native**, leveraging Amazon Web Services (AWS) for high availability, scalability, and security.
+
+### 🌟 Key Objectives
+- **Efficiency**: Automate the booking process and prevent double-booking.
+- **Scalability**: Handle growing user bases and data loads using AWS RDS and S3.
+- **Security**: Implement robust authentication (JWT), role-based access control (RBAC), and secure data storage.
+- **Reliability**: ensuring uptime with PM2 process management and automated backups.
+
+---
+
+## 🚀 Features
+
+### 👤 User Features (Public/Private)
+1.  **Authentication & Security**
+    -   Secure Registration & Login with JWT.
+    -   **Email Verification & OTP**: Two-factor authentication flow using AWS SES.
+    -   **Password Reset**: Secure implementation for lost passwords.
+    -   **Profile Management**: Update personal details, change password, and **upload profile pictures** (stored on S3).
+
+2.  **Dashboard & Navigation**
+    -   **Global Search (⌘K)**: Quick navigation to any feature or resource.
+    -   **Interactive Dashboard**: View upcoming bookings and quick actions.
+
+3.  **Booking Workflow**
+    -   **Visual Calendar**: Monthly/Weekly/Daily views of bookings.
+    -   **Smart Booking Form**:
+        -   Step-by-step wizard.
+        -   **Availability Check**: Real-time conflict detection.
+        -   **Add Attendees**: Invite other users to the booking.
+        -   **Email Notifications**: Auto-send invites to attendees via Mailgun/SES.
+    -   **My Bookings**:
+        -   Filter by Upcoming / Past / Cancelled.
+        -   **Reschedule**: Drag-and-drop or form-based editing.
+        -   **RSVP**: Accept/Decline invitations from others.
+        -   **Export to Calendar**: Download `.ics` files for Outlook/Google Calendar.
+    -   **Resources Page**: Browse facilities with images, descriptions, and capacity details.
+
+### 🛠 Admin Features (Protected)
+1.  **Admin Dashboard**
+    -   **Real-time Analytics**: Visual charts for Booking Trends and Resource Utilization.
+    -   Quick stats (Total Users, Active Bookings, etc.).
+
+2.  **Resource Management**
+    -   **CRUD Operations**: Create, Read, Update, Delete resources.
+    -   **Image Uploads**: Drag-and-drop upload for resource images (saved to AWS S3).
+    -   **Categorization**: Manage resource types (e.g., "Sports", "Rooms").
+
+3.  **User Management**
+    -   View all registered users and their roles (Admin/User).
+    -   **Role Management**: Promote/Demote users.
+    -   **Account Status**: Activate/Deactivate access.
+    -   **Add User**: Manually register users from the admin panel.
+
+---
+
+## 🏗 Technical Architecture
+
+### Tech Stack (MERN)
+-   **Frontend**: React.js 18, Vite, TailwindCSS, Shadcn UI (Component Library).
+-   **Backend**: Node.js, Express.js.
+-   **Database**: MySQL (Relational Data Model).
+-   **ORM/Driver**: `mysql2` with connection pooling.
+
+### ☁️ AWS Cloud Infrastructure
+The system is fully deployed on the AWS Cloud ecosystem:
+
+| Service | Usage & Configuration |
+| :--- | :--- |
+| **Amazon EC2** | **Compute**: Hosts the Node.js Backend and React Frontend (served via Nginx).<br>- OS: Ubuntu 22.04 LTS.<br>- **PM2**: Used for process management and zero-downtime reloads.<br>- **Nginx**: Reverse proxy to route traffic between port 80 and localhost:5000. |
+| **Amazon RDS** | **Database**: Managed MySQL instance.<br>- Ensures high availability and automated backups.<br>- **Security Group**: Inbound rules restricted to the EC2 instance only (Port 3306). |
+| **Amazon S3** | **Storage**: Object storage for images (Profile Pictures & Resource Photos).<br>- **Middleware**: `multer-s3` handles direct uploads.<br>- **Fallback**: Implemented a "Local Fallback" mechanism to save files to disk if S3 connectivity is interrupted, ensuring system robustness. |
+| **Amazon SES** | **Email**: Simple Email Service for sending transactional emails (OTPs, Booking Confirmations). |
+| **IAM** | **Security**: Least-privilege IAM users created for S3 access (`AmazonS3FullAccess` limited to specific buckets). |
+
+### 🔒 Security Implementation
+1.  **Data Transmission**: All API requests routed via proper HTTP methods.
+2.  **Passwords**: Hashed securely using `bcrypt` before storage.
+3.  **Environment Variables**: All sensitive keys (DB Credentials, AWS Keys, JWT Secret) are stored in `.env` files and **never** committed to version control.
+4.  **Network Security**: AWS Security Groups configured to allow only necessary traffic (HTTP/HTTPS/SSH).
+
+---
+
+## 💻 Installation & Setup (Local)
 
 ### Prerequisites
-- Node.js installed
-- MySQL Database running (Local or Cloud)
-- AWS Account (for S3 and eventually EC2/RDS deployment)
+-   Node.js (v18+)
+-   MySQL Server
+-   AWS Account (for S3/SES features)
 
-### 1. Database Setup
-Run the `database/schema.sql` script in your MySQL interface to create the tables.
+### 1. Clone & Install
+```bash
+git clone https://github.com/yourusername/booking-system.git
+cd booking-system
+```
 
 ### 2. Backend Setup
-1. Navigate to the `backend` folder:
-   ```bash
-   cd backend
-   ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Configure environment variables:
-   - Copy `.env.example` to `.env` (in the root or backend folder, update paths accordingly)
-   - Update `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `S3_BUCKET_NAME`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`.
-4. Start the server:
-   ```bash
-   npm run dev
-   ```
+```bash
+cd backend
+npm install
+```
+Create a `.env` file in `backend/`:
+```env
+PORT=5000
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=yourpassword
+DB_NAME=booking_system
+JWT_SECRET=your_secret_key
+AWS_ACCESS_KEY_ID=your_key
+AWS_SECRET_ACCESS_KEY=your_secret
+AWS_REGION=us-east-1
+S3_BUCKET_NAME=your_bucket
+```
+Run Database Migration:
+```bash
+# Import database/schema.sql into your MySQL instance
+mysql -u root -p < ../database/schema.sql
+```
+Start Server:
+```bash
+npm run dev
+```
 
 ### 3. Frontend Setup
-The frontend is composed of static files.
-- Open `frontend/index.html` in your browser.
-- Ensure the API URL in `frontend/js/api.js` points to your backend (default: `http://localhost:5000/api`).
+```bash
+cd ../frontend
+npm install
+```
+Start Client:
+```bash
+npm run dev
+```
+Access the app at `http://localhost:5173`.
 
-## API Endpoints
+---
 
-### Auth
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `GET /api/auth/me`
+## 📈 Future Enhancements
+-   **Payment Integration**: Stripe/PayPal for paid bookings.
+-   **Waitlist System**: Auto-notify users when a slot frees up.
+-   **Mobile App**: React Native adaptation for iOS/Android.
 
-### Resources
-- `GET /api/resources`
-- `POST /api/resources` (Admin)
-
-### Bookings
-- `GET /api/bookings`
-- `POST /api/bookings`
-- `DELETE /api/bookings/:id`
-- `POST /api/bookings/:id/upload`
-
-## Deployment Checklist
-1. Create RDS MySQL instance.
-2. Create S3 Bucket.
-3. Launch EC2 instance (Ubuntu/Amazon Linux).
-4. Clone repo to EC2.
-5. Install Node.js & NPM on EC2.
-6. Set PM2 for process management.
-7. Configure Nginx as reverse proxy.
+---
+*Built by Yong Chun for CSC3074.*
