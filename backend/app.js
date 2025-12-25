@@ -37,6 +37,7 @@ app.use('/api/resources', resourceRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/images', require('./routes/images'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

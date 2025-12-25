@@ -7,12 +7,14 @@ import { toast } from 'sonner';
 import ConfirmModal from '../../components/ui/confirm-modal';
 import Modal from '../../components/ui/modal';
 import { Label } from '../../components/ui/label';
+import { useAuth } from '../../context/AuthContext';
 
 export default function UserManagement() {
     const [users, setUsers] = useState([]);
     const [filteredUsers, setFilteredUsers] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(true);
+    const { user: currentUser } = useAuth();
 
     // Delete Modal
     const [deleteModal, setDeleteModal] = useState({ open: false, id: null });
@@ -124,7 +126,10 @@ export default function UserManagement() {
                         ) : (
                             filteredUsers.map((user) => (
                                 <tr key={user.id} className="border-b hover:bg-muted/50 transition-colors">
-                                    <td className="px-6 py-4 font-medium">{user.name}</td>
+                                    <td className="px-6 py-4 font-medium">
+                                        {user.name}
+                                        {currentUser?.id === user.id && <span className="ml-2 text-xs text-muted-foreground">(You)</span>}
+                                    </td>
                                     <td className="px-6 py-4">{user.email}</td>
                                     <td className="px-6 py-4">
                                         <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${user.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
@@ -139,6 +144,7 @@ export default function UserManagement() {
                                             size="sm"
                                             onClick={() => toggleRole(user)}
                                             title="Toggle Admin Role"
+                                            disabled={currentUser?.id === user.id}
                                         >
                                             {user.role === 'admin' ? "Demote" : "Promote"}
                                         </Button>
@@ -147,6 +153,7 @@ export default function UserManagement() {
                                             size="icon"
                                             className="text-destructive hover:text-destructive"
                                             onClick={() => setDeleteModal({ open: true, id: user.id })}
+                                            disabled={currentUser?.id === user.id}
                                         >
                                             <Trash className="h-4 w-4" />
                                         </Button>

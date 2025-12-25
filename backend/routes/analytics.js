@@ -7,11 +7,14 @@ const { auth, adminAuth } = require('../middleware/auth');
 router.get('/admin/stats', auth, adminAuth, async (req, res) => {
     try {
         // Parallelize queries for performance
+        // Parallelize queries for performance
         const [
             [totalBookings],
             [activeResources],
             [totalUsers],
-            [recentActivity]
+            [recentActivity],
+            bookingTrends,
+            resourceUtilization
         ] = await Promise.all([
             db.query('SELECT COUNT(*) as count FROM bookings'),
             db.query('SELECT COUNT(*) as count FROM resources'),
@@ -22,18 +25,23 @@ router.get('/admin/stats', auth, adminAuth, async (req, res) => {
                 JOIN users u ON b.user_id = u.id 
                 JOIN resources r ON b.resource_id = r.id 
                 ORDER BY b.created_at DESC LIMIT 5
-            `)
+            `),
+            // Booking Trends (Last 6 months)
+            db.query(`
+                SELECT DATE_FORMAT(booking_date, '%b') as name, COUNT(*) as bookings 
+                FROM bookings 
+                WHERE booking_date >= DATE_SUB(NOW(), INTERVAL 6 MONTH) 
+                GROUP BY DATE_FORMAT(booking_date, '%Y-%m'), name 
+                ORDER BY DATE_FORMAT(booking_date, '%Y-%m') ASC
+            `).then(([rows]) => rows),
+            // Resource Utilization by Type
+            db.query(`
+                SELECT r.type as name, COUNT(b.id) as value 
+                FROM resources r 
+                LEFT JOIN bookings b ON r.id = b.resource_id 
+                GROUP BY r.type
+            `).then(([rows]) => rows)
         ]);
-
-        // Mock data for charts (since we might not have historical data yet)
-        const bookingTrends = [
-            { name: 'Jan', bookings: 12 },
-            { name: 'Feb', bookings: 19 },
-            { name: 'Mar', bookings: 3 },
-            { name: 'Apr', bookings: 5 },
-            { name: 'May', bookings: 2 },
-            { name: 'Jun', bookings: 3 },
-        ];
 
         res.json({
             stats: {
@@ -41,8 +49,9 @@ router.get('/admin/stats', auth, adminAuth, async (req, res) => {
                 activeResources: activeResources[0].count,
                 totalUsers: totalUsers[0].count
             },
-            recentActivity: recentActivity,
-            trends: bookingTrends
+            recentActivity: recentActivity[0] ? recentActivity : [], // Handle varying return shapes if needed, usually [rows] is first
+            trends: bookingTrends,
+            utilization: resourceUtilization
         });
     } catch (err) {
         console.error(err);

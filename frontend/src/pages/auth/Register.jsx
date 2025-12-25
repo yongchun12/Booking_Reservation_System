@@ -4,45 +4,62 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { useAuth } from '../../context/AuthContext';
-import Modal from '../../components/ui/modal';
-import { CheckCircle } from 'lucide-react';
-
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import api from '../../lib/api';
 
 export default function Register() {
-    // ... hooks
+    const [formData, setFormData] = useState({
+        name: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+        otp: ''
+    });
+    const [step, setStep] = useState('details'); // 'details' or 'otp'
     const [loading, setLoading] = useState(false);
-    const [name, setName] = useState('');
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
-    const [showSuccessModal, setShowSuccessModal] = useState(false);
-    const { register } = useAuth();
+    const { login } = useAuth();
     const navigate = useNavigate();
+
+    const handleChange = (e) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
-        if (password !== confirmPassword) {
-            toast.error("Passwords do not match");
-            return;
-        }
-
         setLoading(true);
+
         try {
-            await register(name, email, password);
-            setShowSuccessModal(true);
-            toast.success("Account created!");
-        } catch (err) {
-            toast.error(err.response?.data?.message || 'Registration failed');
+            if (step === 'details') {
+                if (formData.password !== formData.confirmPassword) {
+                    toast.error("Passwords do not match");
+                    setLoading(false);
+                    return;
+                }
+
+                // Initiate Registration
+                await api.post('/auth/register-init', { email: formData.email });
+                toast.success("OTP sent to your email!");
+                setStep('otp');
+            } else {
+                // Verify OTP & Register
+                const res = await api.post('/auth/register-verify', {
+                    name: formData.name,
+                    email: formData.email,
+                    password: formData.password,
+                    otp: formData.otp
+                });
+
+                login(res.data.user, res.data.token);
+                toast.success("Registration successful!");
+                navigate('/dashboard');
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Registration failed");
         } finally {
             setLoading(false);
         }
-    };
-
-    const handleCloseModal = () => {
-        setShowSuccessModal(false);
-        navigate('/auth/login');
     };
 
     return (
@@ -50,78 +67,104 @@ export default function Register() {
             <div className="space-y-2">
                 <h2 className="text-3xl font-bold tracking-tight">Create an account</h2>
                 <p className="text-muted-foreground">
-                    Enter your details below to create your account
+                    {step === 'details' ? "Enter your details below to create your account" : "Enter the verification code sent to your email"}
                 </p>
             </div>
+
             <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                    <Label htmlFor="name">Full Name</Label>
-                    <Input
-                        id="name"
-                        placeholder="John Doe"
-                        required
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                    />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                        id="email"
-                        type="email"
-                        placeholder="name@example.com"
-                        required
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                    />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
-                    <Input
-                        id="password"
-                        type="password"
-                        required
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                    />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="confirm-password">Confirm Password</Label>
-                    <Input
-                        id="confirm-password"
-                        type="password"
-                        required
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                    />
-                </div>
-                <Button type="submit" className="w-full" isLoading={loading}>
-                    Create account
+                {step === 'details' ? (
+                    <>
+                        <div className="space-y-2">
+                            <Label htmlFor="name">Full Name</Label>
+                            <Input
+                                id="name"
+                                name="name"
+                                placeholder="John Doe"
+                                required
+                                value={formData.name}
+                                onChange={handleChange}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="email">Email</Label>
+                            <Input
+                                id="email"
+                                name="email"
+                                type="email"
+                                placeholder="m@example.com"
+                                required
+                                value={formData.email}
+                                onChange={handleChange}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="password">Password</Label>
+                            <Input
+                                id="password"
+                                name="password"
+                                type="password"
+                                required
+                                value={formData.password}
+                                onChange={handleChange}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="confirmPassword">Confirm Password</Label>
+                            <Input
+                                id="confirmPassword"
+                                name="confirmPassword"
+                                type="password"
+                                required
+                                value={formData.confirmPassword}
+                                onChange={handleChange}
+                            />
+                        </div>
+                    </>
+                ) : (
+                    <div className="space-y-2">
+                        <Label htmlFor="otp">Verification Code (OTP)</Label>
+                        <Input
+                            id="otp"
+                            name="otp"
+                            placeholder="123456"
+                            required
+                            value={formData.otp}
+                            onChange={handleChange}
+                            className="text-center text-lg tracking-widest"
+                            maxLength={6}
+                        />
+                        <p className="text-xs text-muted-foreground text-center">
+                            Code sent to {formData.email}
+                        </p>
+                    </div>
+                )}
+
+                <Button type="submit" className="w-full" disabled={loading}>
+                    {loading ? (
+                        <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            {step === 'details' ? 'Sending OTP...' : 'Verifying...'}
+                        </>
+                    ) : (
+                        step === 'details' ? 'Next' : 'Create Account'
+                    )}
                 </Button>
             </form>
+
+            {step === 'otp' && (
+                <div className="text-center">
+                    <Button variant="link" size="sm" onClick={() => setStep('details')} className="text-muted-foreground">
+                        Back to details
+                    </Button>
+                </div>
+            )}
+
             <div className="text-center text-sm text-muted-foreground">
-                Already have an account?{' '}
+                Already have an account?{" "}
                 <Link to="/auth/login" className="font-medium text-primary hover:underline">
                     Sign in
                 </Link>
             </div>
-
-            <Modal isOpen={showSuccessModal} onClose={handleCloseModal} title="Success">
-                <div className="flex flex-col items-center justify-center space-y-4 py-4">
-                    <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
-                        <CheckCircle className="h-6 w-6 text-green-600" />
-                    </div>
-                    <div className="text-center">
-                        <h4 className="text-lg font-medium">Account Created!</h4>
-                        <p className="text-sm text-muted-foreground mt-1">
-                            Your account has been successfully registered. Please log in to continue.
-                        </p>
-                    </div>
-                    <Button onClick={handleCloseModal} className="w-full">
-                        Go to Login
-                    </Button>
-                </div>
-            </Modal>
         </div>
     );
 }

@@ -76,7 +76,7 @@ router.put('/:id', [auth, adminAuth], async (req, res) => {
 router.get('/', auth, async (req, res) => {
     try {
         // Return necessary info. Admin needs role/created_at using this same endpoint for now.
-        const [users] = await db.query('SELECT id, name, email, role, created_at FROM users WHERE id != ? ORDER BY name ASC', [req.user.id]);
+        const [users] = await db.query('SELECT id, name, email, role, created_at, profile_picture FROM users ORDER BY name ASC');
         res.json(users);
     } catch (err) {
         console.error(err.message);

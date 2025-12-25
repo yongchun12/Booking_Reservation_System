@@ -4,6 +4,8 @@ import { cn } from '../../lib/utils';
 import { Button } from '../ui/button';
 import { useAuth } from '../../context/AuthContext';
 
+import { getProxiedImageUrl } from '../../lib/image-utils';
+
 export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
     const { logout, user } = useAuth();
 
@@ -74,7 +76,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
                     <div className="flex items-center gap-3 rounded-lg border p-3 bg-muted/30">
                         <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-background border flex items-center justify-center">
                             {user?.profile_picture ? (
-                                <img src={user.profile_picture} alt={user.name} className="h-full w-full object-cover" />
+                                <img src={getProxiedImageUrl(user.profile_picture)} alt={user.name} className="h-full w-full object-cover" />
                             ) : (
                                 <span className="font-semibold text-muted-foreground">
                                     {user?.name?.charAt(0).toUpperCase() || 'U'}

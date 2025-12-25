@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import api from '../../lib/api';
 import { Loader2, Upload, User } from 'lucide-react';
+import { getProxiedImageUrl } from '../../lib/image-utils';
 
 export default function Settings() {
     const { user } = useAuth();
@@ -83,7 +84,7 @@ export default function Settings() {
                                 <div className="h-24 w-24 rounded-full bg-muted flex items-center justify-center overflow-hidden border-2 border-border relative">
                                     {(user?.profile_picture || (file && URL.createObjectURL(file))) ? (
                                         <img
-                                            src={file ? URL.createObjectURL(file) : user?.profile_picture}
+                                            src={file ? URL.createObjectURL(file) : getProxiedImageUrl(user?.profile_picture)}
                                             alt="Profile"
                                             className="h-full w-full object-cover"
                                         />

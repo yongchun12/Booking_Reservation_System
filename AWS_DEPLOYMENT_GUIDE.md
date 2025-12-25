@@ -351,3 +351,33 @@ sudo systemctl restart nginx
 2. You should see the new **Modern Interface**.
 3. Log in and verify that charts and resource lists are loading.
 
+
+---
+
+## Step 7: Configuring Email (AWS SES)
+
+To enable "Forgot Password" and "OTP Registration" features, you must configure AWS Simple Email Service (SES).
+
+### Important: Sandbox Mode
+In the AWS Academy/Free Tier environment, your SES account is in **"Sandbox Mode"**.
+This has two critical restrictions:
+1.  You can only send email **FROM** verified addresses.
+2.  You can only send email **TO** verified addresses.
+
+### How to Verify an Email Address
+You do **NOT** need to buy a domain. You can verify your personal email (Gmail, Hotmail, etc.).
+
+1.  Go to the **Amazon SES** Console.
+    -   Search for "SES" or "Simple Email Service".
+2.  In the sidebar, click **Verified identities**.
+3.  Click the orange **Create identity** button.
+4.  **Identity type**: Select **Email address** (Do NOT select Domain).
+5.  **Email address**: Enter your email (e.g., `yongchun_sam@hotmail.com` or your student email).
+6.  Click **Create identity**.
+7.  Check your email inbox. You will receive a verification link from AWS. Click it.
+8.  **Status**: The status in the console should change to "Verified".
+
+### Testing
+Once verified:
+-   **Sender**: The system will automatically use this email as the sender (configured in `backend/utils/emailService.js` or `SES_SENDER_EMAIL` env var).
+-   **Receiver**: You can now Register/Forgot Password using THIS SAME email address to test functionality.

@@ -5,6 +5,7 @@ import AuthLayout from './layouts/AuthLayout';
 import DashboardLayout from './layouts/DashboardLayout';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
+import ForgotPassword from './pages/auth/ForgotPassword';
 import Dashboard from './pages/user/Dashboard';
 import Calendar from './pages/user/Calendar';
 import Resources from './pages/user/Resources';
@@ -26,6 +27,7 @@ function App() {
             <Route path="/auth" element={<AuthLayout />}>
               <Route path="login" element={<Login />} />
               <Route path="register" element={<Register />} />
+              <Route path="forgot-password" element={<ForgotPassword />} />
               <Route index element={<Navigate to="/auth/login" replace />} />
             </Route>
 

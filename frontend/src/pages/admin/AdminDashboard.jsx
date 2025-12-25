@@ -1,29 +1,68 @@
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import api from '../../lib/api';
+import { Loader2 } from 'lucide-react';
 
-const areaData = [
-    { name: 'Jan', bookings: 40 },
-    { name: 'Feb', bookings: 30 },
-    { name: 'Mar', bookings: 20 },
-    { name: 'Apr', bookings: 27 },
-    { name: 'May', bookings: 18 },
-    { name: 'Jun', bookings: 23 },
-    { name: 'Jul', bookings: 34 },
-];
-
-const pieData = [
-    { name: 'Meeting Rooms', value: 400 },
-    { name: 'Equipment', value: 300 },
-    { name: 'Halls', value: 300 },
-    { name: 'Others', value: 200 },
-];
-
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
 export default function AdminDashboard() {
+    const [stats, setStats] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                const res = await api.get('/analytics/admin/stats');
+                setStats(res.data);
+            } catch (error) {
+                console.error("Failed to fetch admin stats", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchStats();
+    }, []);
+
+    if (loading) {
+        return <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+    }
+
+    if (!stats) return null;
+
+    const { trends = [], utilization = [] } = stats;
+
     return (
         <div className="space-y-6">
             <h2 className="text-3xl font-bold tracking-tight">Admin Dashboard</h2>
+
+            {/* Quick Stats */}
+            <div className="grid gap-4 md:grid-cols-3">
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{stats.stats?.totalBookings || 0}</div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Active Resources</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{stats.stats?.activeResources || 0}</div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{stats.stats?.totalUsers || 0}</div>
+                    </CardContent>
+                </Card>
+            </div>
 
             {/* Overview Charts */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
@@ -34,7 +73,7 @@ export default function AdminDashboard() {
                     <CardContent className="pl-2">
                         <div className="h-[300px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={areaData}>
+                                <AreaChart data={trends}>
                                     <defs>
                                         <linearGradient id="colorBookings" x1="0" y1="0" x2="0" y2="1">
                                             <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8} />
@@ -61,7 +100,7 @@ export default function AdminDashboard() {
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
                                     <Pie
-                                        data={pieData}
+                                        data={utilization}
                                         cx="50%"
                                         cy="50%"
                                         innerRadius={60}
@@ -70,7 +109,7 @@ export default function AdminDashboard() {
                                         paddingAngle={5}
                                         dataKey="value"
                                     >
-                                        {pieData.map((entry, index) => (
+                                        {utilization.map((entry, index) => (
                                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                         ))}
                                     </Pie>

@@ -7,6 +7,7 @@ import ConfirmModal from '../../components/ui/confirm-modal';
 import { Plus, Edit, Trash, Loader2, Upload, AlertTriangle, Search } from 'lucide-react';
 import api from '../../lib/api';
 import { toast } from 'sonner';
+import { getProxiedImageUrl } from '../../lib/image-utils';
 
 class ErrorBoundary extends React.Component {
     constructor(props) {
