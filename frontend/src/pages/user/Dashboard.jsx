@@ -113,19 +113,25 @@ export default function Dashboard() {
                     <CardContent>
                         <div className="space-y-8">
                             {safeStats.recentActivity && safeStats.recentActivity.length > 0 ? (
-                                safeStats.recentActivity.map((booking, i) => (
-                                    <div key={i} className="flex items-center">
-                                        <div className="space-y-1">
-                                            <p className="text-sm font-medium leading-none">{booking.resource_name}</p>
-                                            <p className="text-sm text-muted-foreground">
-                                                {format(new Date(booking.start_time), 'MMM d, h:mm a')}
-                                            </p>
+                                safeStats.recentActivity.map((booking, i) => {
+                                    // Combine date and time safely
+                                    const dateStr = booking.booking_date.includes('T') ? booking.booking_date.split('T')[0] : booking.booking_date;
+                                    const dateTime = new Date(`${dateStr}T${booking.start_time}`);
+
+                                    return (
+                                        <div key={i} className="flex items-center">
+                                            <div className="space-y-1">
+                                                <p className="text-sm font-medium leading-none">{booking.resource_name}</p>
+                                                <p className="text-sm text-muted-foreground">
+                                                    {format(dateTime, 'MMM d, h:mm a')}
+                                                </p>
+                                            </div>
+                                            <div className="ml-auto font-medium capitalize text-xs bg-muted px-2 py-1 rounded">
+                                                {booking.status}
+                                            </div>
                                         </div>
-                                        <div className="ml-auto font-medium capitalize text-xs bg-muted px-2 py-1 rounded">
-                                            {booking.status}
-                                        </div>
-                                    </div>
-                                ))
+                                    );
+                                })
                             ) : (
                                 <p className="text-sm text-muted-foreground">No recent activity.</p>
                             )}

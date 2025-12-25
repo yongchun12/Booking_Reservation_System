@@ -22,16 +22,12 @@ export default function Settings() {
     const handleUpdateProfile = async () => {
         setLoading(true);
         try {
-            // Note: In a real app, you'd have a specific endpoint for this.
-            // For MVP, we assume /auth/me or similar might handle it, 
-            // OR we just simulate success if no endpoint exists yet. 
-            // Let's assume we need to create the endpoint if it fails.
-            // Using a placeholder endpoint for now but showing the Toast UX.
             await api.put('/auth/update-details', { name });
             toast.success("Profile updated successfully!");
+            // Optionally reload user context here if you had a reloadUser function
         } catch (err) {
             console.error(err);
-            toast.error("Failed to update profile. (Feature might be missing backend support)");
+            toast.error(err.response?.data?.message || "Failed to update profile.");
         } finally {
             setLoading(false);
         }

@@ -1,15 +1,17 @@
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
-import { Button } from '../../components/ui/button';
-import { cn } from '../../lib/utils';
-import { Calendar, Clock, Loader2, MapPin } from 'lucide-react';
-import api from '../../lib/api';
-import { format, parseISO } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
+import ConfirmModal from '../../components/ui/confirm-modal';
+import { toast } from 'sonner';
 
 export default function MyBookings() {
+    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('upcoming');
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    // Cancel Modal State
+    const [cancelModalOpen, setCancelModalOpen] = useState(false);
+    const [bookingToCancel, setBookingToCancel] = useState(null);
+    const [cancelling, setCancelling] = useState(false);
 
     useEffect(() => {
         const fetchBookings = async () => {
@@ -25,25 +27,95 @@ export default function MyBookings() {
         fetchBookings();
     }, []);
 
-    // Filter logic
+    const handleReschedule = (booking) => {
+        // Navigate to NewBooking with pre-filled details
+        navigate('/new-booking', {
+            state: {
+                resourceId: booking.resource_id,
+                resourceName: booking.resource_name,
+                // Optional: Pass dates if we want to pre-fill them too
+                // date: booking.booking_date
+            }
+        });
+    };
+
+    const handleCancelClick = (booking) => {
+        setBookingToCancel(booking);
+        setCancelModalOpen(true);
+    };
+
+    const confirmCancel = async () => {
+        if (!bookingToCancel) return;
+        setCancelling(true);
+        try {
+            await api.delete(`/bookings/${bookingToCancel.id}`);
+            // Optimistic update or refetch
+            setBookings(prev => prev.map(b => b.id === bookingToCancel.id ? { ...b, status: 'cancelled' } : b));
+            toast.success("Booking cancelled successfully");
+            setCancelModalOpen(false);
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to cancel booking");
+        } finally {
+            setCancelling(false);
+        }
+    };
+
+    // Helper to generate ICS file content
+    const generateICS = (booking, startDateTime, endDateTime) => {
+        if (!startDateTime || !endDateTime) return;
+
+        const formatDate = (date) => date.toISOString().replace(/-|:|\.\d+/g, "");
+
+        const icsContent = [
+            "BEGIN:VCALENDAR",
+            "VERSION:2.0",
+            "PRODID:-//Booking System//User//EN",
+            "BEGIN:VEVENT",
+            `UID:${booking.id}@bookingsystem.com`,
+            `DTSTAMP:${formatDate(new Date())}`,
+            `DTSTART:${formatDate(startDateTime)}`,
+            `DTEND:${formatDate(endDateTime)}`,
+            `SUMMARY:Booking: ${booking.resource_name}`,
+            `DESCRIPTION:Notes: ${booking.notes || 'No notes'}`,
+            "END:VEVENT",
+            "END:VCALENDAR"
+        ].join("\r\n");
+
+        const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
+        const link = document.createElement("a");
+        link.href = window.URL.createObjectURL(blob);
+        link.setAttribute("download", `booking_${booking.id}.ics`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    // ... (rest of helper functions same as before) ...
+    const getBookingDateTime = (booking, timeStr) => {
+        if (!booking.booking_date || !timeStr) return null;
+        try {
+            const dateStr = booking.booking_date.includes('T') ? booking.booking_date.split('T')[0] : booking.booking_date;
+            return new Date(`${dateStr}T${timeStr}`);
+        } catch (e) {
+            console.error("Date parse error", e);
+            return null;
+        }
+    };
+
     const safeBookings = Array.isArray(bookings) ? bookings : [];
 
     const filteredBookings = safeBookings.filter(b => {
-        if (!b || !b.start_time) return false;
-        try {
-            const bookingDate = new Date(b.start_time);
-            const now = new Date();
-            const isPast = bookingDate < now;
-            const isCancelled = b.status === 'cancelled';
+        const startDateTime = getBookingDateTime(b, b.start_time);
+        if (!startDateTime || !isValid(startDateTime)) return false;
 
-            if (activeTab === 'cancelled') return isCancelled;
-            if (activeTab === 'past') return isPast && !isCancelled;
-            if (activeTab === 'upcoming') return !isPast && !isCancelled;
-            return true;
-        } catch (e) {
-            console.error("Invalid booking date", b);
-            return false;
-        }
+        const isExpired = isPast(startDateTime);
+        const isCancelled = b.status === 'cancelled';
+
+        if (activeTab === 'cancelled') return isCancelled;
+        if (activeTab === 'past') return isExpired && !isCancelled;
+        if (activeTab === 'upcoming') return !isExpired && !isCancelled;
+        return true;
     });
 
     if (loading) {
@@ -52,6 +124,15 @@ export default function MyBookings() {
 
     return (
         <div className="space-y-6">
+            <ConfirmModal
+                isOpen={cancelModalOpen}
+                onClose={() => setCancelModalOpen(false)}
+                title="Cancel Booking"
+                message={`Are you sure you want to cancel your booking for ${bookingToCancel?.resource_name}?`}
+                onConfirm={confirmCancel}
+                isLoading={cancelling}
+            />
+
             <div className="flex items-center justify-between">
                 <h2 className="text-3xl font-bold tracking-tight">My Bookings</h2>
             </div>
@@ -79,56 +160,80 @@ export default function MyBookings() {
                     <div className="col-span-full text-center py-12 text-muted-foreground bg-muted/20 rounded-lg">
                         <p>No {activeTab} bookings found.</p>
                         {activeTab === 'upcoming' && (
-                            <Button variant="link" className="mt-2 text-primary">Book a resource now</Button>
+                            <Button variant="link" className="mt-2 text-primary" onClick={() => navigate('/new-booking')}>Book a resource now</Button>
                         )}
                     </div>
                 ) : (
-                    filteredBookings.map((booking) => (
-                        <Card key={booking.id} className="transition-all hover:shadow-md border-muted">
-                            <CardHeader className="pb-3">
-                                <div className="flex justify-between items-start">
-                                    <div className="space-y-1">
-                                        <CardTitle className="text-lg">{booking.resource_name || 'Resource'}</CardTitle>
-                                        <div className="flex items-center text-sm text-muted-foreground">
-                                            <MapPin className="mr-1 h-3 w-3" />
-                                            {booking.resource_type || 'Room'}
+                    filteredBookings.map((booking) => {
+                        const startDateTime = getBookingDateTime(booking, booking.start_time);
+                        const endDateTime = getBookingDateTime(booking, booking.end_time);
+
+                        return (
+                            <Card key={booking.id} className="transition-all hover:shadow-md border-muted">
+                                <CardHeader className="pb-3">
+                                    <div className="flex justify-between items-start">
+                                        <div className="space-y-1">
+                                            <CardTitle className="text-lg">{booking.resource_name || 'Resource'}</CardTitle>
+                                            <div className="flex items-center text-sm text-muted-foreground">
+                                                <MapPin className="mr-1 h-3 w-3" />
+                                                {booking.resource_type || 'Room'}
+                                            </div>
+                                        </div>
+                                        <span className={cn(
+                                            "px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize",
+                                            activeTab === 'upcoming' && "bg-blue-100 text-blue-700",
+                                            activeTab === 'past' && "bg-gray-100 text-gray-700",
+                                            booking.status === 'cancelled' && "bg-red-100 text-red-700",
+                                        )}>
+                                            {booking.status}
+                                        </span>
+                                    </div>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="grid grid-cols-2 gap-4 text-sm mb-4">
+                                        <div className="flex items-center">
+                                            <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
+                                            <span className="font-medium">
+                                                {isValid(startDateTime) ? format(startDateTime, 'MMM d, yyyy') : 'Invalid Date'}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center">
+                                            <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
+                                            <span>
+                                                {isValid(startDateTime) ? format(startDateTime, 'h:mm a') : '--'} -
+                                                {isValid(endDateTime) ? format(endDateTime, 'h:mm a') : '--'}
+                                            </span>
                                         </div>
                                     </div>
-                                    <span className={cn(
-                                        "px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize",
-                                        activeTab === 'upcoming' && "bg-blue-100 text-blue-700",
-                                        activeTab === 'past' && "bg-gray-100 text-gray-700",
-                                        booking.status === 'cancelled' && "bg-red-100 text-red-700",
-                                    )}>
-                                        {booking.status}
-                                    </span>
-                                </div>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="grid grid-cols-2 gap-4 text-sm mb-4">
-                                    <div className="flex items-center">
-                                        <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
-                                        <span className="font-medium">{format(parseISO(booking.start_time), 'MMM d, yyyy')}</span>
+                                    <div className="flex gap-2 justify-end pt-2 border-t">
+                                        {activeTab === 'upcoming' && (
+                                            <>
+                                                <Button variant="outline" size="sm" onClick={() => generateICS(booking, startDateTime, endDateTime)}>
+                                                    ICS
+                                                </Button>
+                                                <Button variant="outline" size="sm" onClick={() => handleReschedule(booking)}>
+                                                    Reschedule
+                                                </Button>
+                                                <Button variant="destructive" size="sm" onClick={() => handleCancelClick(booking)}>
+                                                    Cancel
+                                                </Button>
+                                            </>
+                                        )}
+                                        {activeTab === 'past' && (
+                                            <Button
+                                                variant="secondary"
+                                                size="sm"
+                                                className="w-full"
+                                                onClick={() => handleReschedule(booking)}
+                                            >
+                                                Book Again
+                                            </Button>
+                                        )}
                                     </div>
-                                    <div className="flex items-center">
-                                        <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
-                                        <span>{format(parseISO(booking.start_time), 'h:mm a')} - {format(parseISO(booking.end_time), 'h:mm a')}</span>
-                                    </div>
-                                </div>
-                                <div className="flex gap-2 justify-end pt-2 border-t">
-                                    {activeTab === 'upcoming' && (
-                                        <>
-                                            <Button variant="outline" size="sm">Reschedule</Button>
-                                            <Button variant="destructive" size="sm">Cancel</Button>
-                                        </>
-                                    )}
-                                    {activeTab === 'past' && (
-                                        <Button variant="secondary" size="sm" className="w-full">Book Again</Button>
-                                    )}
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))
+                                </CardContent>
+                            </Card>
+                        );
+                    })
                 )}
             </div>
         </div>

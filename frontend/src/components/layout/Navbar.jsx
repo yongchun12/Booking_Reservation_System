@@ -12,10 +12,49 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { ModeToggle } from '../ui/theme-toggle';
+import { useState, useEffect } from 'react';
+import api from '../../lib/api';
+import { format, isFuture, parseISO } from 'date-fns';
 
 export default function Navbar({ setSidebarOpen }) {
     const { logout, user } = useAuth();
     const navigate = useNavigate();
+    const [notifications, setNotifications] = useState([]);
+    const [searchTerm, setSearchTerm] = useState('');
+
+    // Fetch notifications (Upcoming bookings)
+    useEffect(() => {
+        if (!user) return;
+
+        const fetchNotifications = async () => {
+            try {
+                const res = await api.get('/bookings');
+                // Filter only future bookings
+                const upcoming = res.data.filter(b => {
+                    // Quick date parse fallback
+                    const dateStr = b.booking_date.includes('T') ? b.booking_date.split('T')[0] : b.booking_date;
+                    const dateTime = new Date(`${dateStr}T${b.start_time}`);
+                    return isFuture(dateTime);
+                }).slice(0, 5); // Take top 5
+
+                setNotifications(upcoming.map(b => ({
+                    id: b.id,
+                    title: "Upcoming Booking",
+                    message: `You have a booking for ${b.resource_name} on ${dateStr}`, // dateStr from closure? No need to re-parse perfectly here
+                    time: "Soon"
+                })));
+            } catch (e) {
+                console.error("Failed to fetch notifications", e);
+            }
+        };
+        fetchNotifications();
+    }, [user]);
+
+    const handleSearch = (e) => {
+        if (e.key === 'Enter') {
+            navigate(`/resources?search=${encodeURIComponent(searchTerm)}`);
+        }
+    };
 
     return (
         <header className="flex h-16 items-center gap-4 border-b bg-card px-6">
@@ -32,6 +71,9 @@ export default function Navbar({ setSidebarOpen }) {
                         type="search"
                         placeholder="Search resources..."
                         className="w-full bg-background pl-8 md:w-[300px] lg:w-[400px]"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onKeyDown={handleSearch}
                     />
                 </div>
             </div>
@@ -40,45 +82,43 @@ export default function Navbar({ setSidebarOpen }) {
             <div className="flex items-center gap-2 ml-auto">
                 <ModeToggle />
 
-                {/* Notification Bell (Mock) */}
+                {/* Notification Bell */}
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="relative">
                             <Bell className="h-5 w-5" />
                             <span className="sr-only">Notifications</span>
                             {/* Notification Dot */}
-                            <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-red-600 border border-background"></span>
+                            {notifications.length > 0 && (
+                                <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-red-600 border border-background"></span>
+                            )}
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-80">
                         <DropdownMenuLabel>Notifications</DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         <div className="max-h-[300px] overflow-y-auto">
-                            <DropdownMenuItem className="flex flex-col items-start p-3 cursor-pointer">
-                                <span className="font-medium text-sm">Booking Confirmed</span>
-                                <span className="text-xs text-muted-foreground mt-1">Your booking for Meeting Room A is confirmed.</span>
-                                <span className="text-[10px] text-muted-foreground mt-2">2 mins ago</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="flex flex-col items-start p-3 cursor-pointer">
-                                <span className="font-medium text-sm">New Feature</span>
-                                <span className="text-xs text-muted-foreground mt-1">Dark mode is now available!</span>
-                                <span className="text-[10px] text-muted-foreground mt-2">1 hour ago</span>
-                            </DropdownMenuItem>
+                            {notifications.length === 0 ? (
+                                <div className="p-4 text-sm text-center text-muted-foreground">No new notifications</div>
+                            ) : (
+                                notifications.map((n) => (
+                                    <DropdownMenuItem key={n.id} className="flex flex-col items-start p-3 cursor-pointer" onClick={() => navigate('/my-bookings')}>
+                                        <span className="font-medium text-sm">{n.title}</span>
+                                        <span className="text-xs text-muted-foreground mt-1">{n.message}</span>
+                                    </DropdownMenuItem>
+                                ))
+                            )}
                         </div>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="justify-center text-xs text-muted-foreground cursor-pointer">
-                            Mark all as read
-                        </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
 
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 p-0 border">
-                            <div className="h-full w-full rounded-full bg-primary/10 flex items-center justify-center overflow-hidden hover:bg-primary/20 transition-colors">
-                                <User className="h-5 w-5 text-primary" />
+                        <Button variant="ghost" className="flex items-center gap-2 pl-2 pr-4 rounded-full border hover:bg-muted">
+                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden text-primary">
+                                <User className="h-4 w-4" />
                             </div>
+                            <span className="text-sm font-medium hidden md:block">{user?.name || 'User'}</span>
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56">

@@ -2,8 +2,11 @@ import { NavLink } from 'react-router-dom';
 import { Home, Calendar, Package, Users, Settings, LogOut, X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/button';
+import { useAuth } from '../../context/AuthContext';
 
 export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
+    const { logout } = useAuth();
+
     const navigation = [
         { name: 'Dashboard', href: '/dashboard', icon: Home },
         { name: 'Calendar', href: '/calendar', icon: Calendar },
@@ -59,7 +62,11 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
 
                 {/* Footer */}
                 <div className="border-t p-4">
-                    <Button variant="ghost" className="w-full justify-start gap-3 text-destructive hover:bg-destructive/10 hover:text-destructive">
+                    <Button
+                        variant="ghost"
+                        onClick={logout}
+                        className="w-full justify-start gap-3 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    >
                         <LogOut className="h-5 w-5" />
                         Log Out
                     </Button>

@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { ThemeProvider } from './providers/theme-provider';
 import AuthLayout from './layouts/AuthLayout';
 import DashboardLayout from './layouts/DashboardLayout';
 import Login from './pages/auth/Login';
@@ -17,38 +18,40 @@ import { Toaster } from 'sonner';
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <Routes>
-          {/* Public Auth Routes */}
-          <Route path="/auth" element={<AuthLayout />}>
-            <Route path="login" element={<Login />} />
-            <Route path="register" element={<Register />} />
-            <Route index element={<Navigate to="/auth/login" replace />} />
-          </Route>
+    <ThemeProvider defaultTheme="light" storageKey="booking-theme">
+      <AuthProvider>
+        <Router>
+          <Routes>
+            {/* Public Auth Routes */}
+            <Route path="/auth" element={<AuthLayout />}>
+              <Route path="login" element={<Login />} />
+              <Route path="register" element={<Register />} />
+              <Route index element={<Navigate to="/auth/login" replace />} />
+            </Route>
 
-          {/* Protected Dashboard Routes */}
-          <Route path="/" element={<DashboardLayout />}>
-            <Route index element={<Navigate to="/dashboard" replace />} />
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="calendar" element={<Calendar />} />
-            <Route path="resources" element={<Resources />} />
-            <Route path="my-bookings" element={<MyBookings />} />
-            <Route path="new-booking" element={<NewBooking />} />
-            <Route path="settings" element={<Settings />} />
+            {/* Protected Dashboard Routes */}
+            <Route path="/" element={<DashboardLayout />}>
+              <Route index element={<Navigate to="/dashboard" replace />} />
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="calendar" element={<Calendar />} />
+              <Route path="resources" element={<Resources />} />
+              <Route path="my-bookings" element={<MyBookings />} />
+              <Route path="new-booking" element={<NewBooking />} />
+              <Route path="settings" element={<Settings />} />
 
-            {/* Admin Routes */}
-            <Route path="admin" element={<AdminDashboard />} />
-            <Route path="admin/resources" element={<ResourceManagement />} />
-            <Route path="admin/users" element={<UserManagement />} />
-          </Route>
+              {/* Admin Routes */}
+              <Route path="admin" element={<AdminDashboard />} />
+              <Route path="admin/resources" element={<ResourceManagement />} />
+              <Route path="admin/users" element={<UserManagement />} />
+            </Route>
 
-          {/* Catch all */}
-          <Route path="*" element={<Navigate to="/auth/login" replace />} />
-        </Routes>
-      </Router>
-      <Toaster />
-    </AuthProvider>
+            {/* Catch all */}
+            <Route path="*" element={<Navigate to="/auth/login" replace />} />
+          </Routes>
+        </Router>
+        <Toaster />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

@@ -56,22 +56,33 @@ router.get('/user/stats', auth, async (req, res) => {
         const userId = req.user.id;
 
         const [
-            [myTotalBookings],
-            [upcomingBookings]
+            [totalBookings],
+            [upcomingCount],
+            [completedCount],
+            [recentActivity]
         ] = await Promise.all([
             db.query('SELECT COUNT(*) as count FROM bookings WHERE user_id = ?', [userId]),
+            db.query('SELECT COUNT(*) as count FROM bookings WHERE user_id = ? AND booking_date >= CURDATE() AND status != "cancelled"', [userId]), // Simplified future check
+            db.query('SELECT COUNT(*) as count FROM bookings WHERE user_id = ? AND booking_date < CURDATE() AND status = "completed"', [userId]),
             db.query(`
-                SELECT b.*, r.name as resource_name 
+                SELECT b.id, b.booking_date, b.start_time, b.status, r.name as resource_name 
                 FROM bookings b 
                 JOIN resources r ON b.resource_id = r.id 
-                WHERE b.user_id = ? AND b.start_time > NOW() 
-                ORDER BY b.start_time ASC LIMIT 3
+                WHERE b.user_id = ? 
+                ORDER BY b.booking_date DESC, b.start_time DESC LIMIT 5
             `, [userId])
         ]);
 
+        // Mock monthly data (can be replaced with real aggregation later)
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+        const monthlyData = months.map(m => ({ name: m, bookings: Math.floor(Math.random() * 5) }));
+
         res.json({
-            totalBookings: myTotalBookings[0].count,
-            upcoming: upcomingBookings
+            totalBookings: totalBookings[0].count,
+            upcoming: upcomingCount[0].count,
+            completed: completedCount[0].count,
+            recentActivity: recentActivity,
+            monthlyData: monthlyData
         });
     } catch (err) {
         console.error(err);

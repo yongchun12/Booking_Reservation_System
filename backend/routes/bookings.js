@@ -57,6 +57,15 @@ router.post('/', [auth, validateBooking], async (req, res) => {
             notes
         });
 
+        // Add Attendees if provided
+        if (req.body.attendee_ids && Array.isArray(req.body.attendee_ids)) {
+            const values = req.body.attendee_ids.map(userId => [bookingId, userId]);
+            if (values.length > 0) {
+                const pool = require('../config/database');
+                await pool.query('INSERT INTO booking_attendees (booking_id, user_id) VALUES ?', [values]);
+            }
+        }
+
         const newBooking = await Booking.findById(bookingId);
         res.status(201).json(newBooking);
     } catch (err) {

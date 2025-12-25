@@ -3,10 +3,21 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../../comp
 import { Button } from '../../components/ui/button';
 import { Users, Loader2 } from 'lucide-react';
 import api from '../../lib/api';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 export default function Resources() {
     const [resources, setResources] = useState([]);
     const [loading, setLoading] = useState(true);
+    const navigate = useNavigate();
+    const location = useLocation();
+    const [searchTerm, setSearchTerm] = useState("");
+
+    // Initialize search from URL
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const q = params.get('search');
+        if (q) setSearchTerm(q);
+    }, [location.search]);
 
     useEffect(() => {
         const fetchResources = async () => {
@@ -21,8 +32,6 @@ export default function Resources() {
         };
         fetchResources();
     }, []);
-
-    const [searchTerm, setSearchTerm] = useState("");
 
     // Filter resources based on search
     const filteredResources = resources.filter(resource =>
@@ -89,7 +98,12 @@ export default function Resources() {
                                 </p>
                             </CardContent>
                             <CardFooter>
-                                <Button className="w-full">Book Now</Button>
+                                <Button
+                                    className="w-full"
+                                    onClick={() => navigate('/new-booking', { state: { resourceId: resource.id, resourceName: resource.name } })}
+                                >
+                                    Book Now
+                                </Button>
                             </CardFooter>
                         </Card>
                     ))}

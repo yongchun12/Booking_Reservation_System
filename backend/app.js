@@ -11,6 +11,14 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Middleware to prevent caching
+app.use((req, res, next) => {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    next();
+});
+
 // Basic route for health check
 app.get('/', (req, res) => {
     res.json({ message: 'Booking System API is running' });
@@ -22,11 +30,13 @@ const resourceRoutes = require('./routes/resources');
 const bookingRoutes = require('./routes/bookings');
 
 const analyticsRoutes = require('./routes/analytics');
+const userRoutes = require('./routes/users');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/resources', resourceRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/users', userRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
